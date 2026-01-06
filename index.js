@@ -48,6 +48,32 @@ app.get('/matches', async (req, res) => {
   }
 });
 
+// POST MATCH
+app.post('/matches', async (req, res) => {
+  const { team_a, team_b, match_date, match_time, location } = req.body;
+
+  if (!team_a || !team_b || !match_date || !match_time || !location) {
+    return res.status(400).json({ message: 'Tutti i campi sono obbligatori' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO matches (team_a, team_b, match_date, match_time, location)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [team_a, team_b, match_date, match_time, location]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('ERRORE POST MATCH:', error.message);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+
 
 // AVVIO SERVER
 const PORT = process.env.PORT || 3000;

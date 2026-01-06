@@ -1,10 +1,40 @@
 import express from 'express';
 import pkg from 'pg';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
 
 const { Pool } = pkg;
 
 const app = express();
 app.use(express.json());
+
+const uploadDir = './uploads';
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const storage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + file.originalname;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      cb(new Error('Solo PDF consentiti'));
+    } else {
+      cb(null, true);
+    }
+  }
+});
+
 
 // Connessione al DB (Render)
 const pool = new Pool({
@@ -116,6 +146,30 @@ app.get('/matches/:id/reports', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('ERRORE GET REPORTS:', error.message);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+// UPLOAD PDF REFERTO
+app.post('/reports/:id/upload', upload.single('pdf'), async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'File PDF mancante' });
+  }
+
+  try {
+    await pool.query(
+      `UPDATE reports SET pdf_path = $1 WHERE id = $2`,
+      [req.file.path, id]
+    );
+
+    res.json({
+      message: 'PDF caricato con successo',
+      path: req.file.path
+    });
+  } catch (error) {
+    console.error('ERRORE UPLOAD PDF:', error.message);
     res.status(500).json({ message: 'Errore server' });
   }
 });

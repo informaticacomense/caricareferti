@@ -150,6 +150,45 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+app.post('/committees/:committeeId/admin', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { committeeId } = req.params;
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email e password obbligatorie' });
+  }
+
+  try {
+    // hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `
+      INSERT INTO users (email, password_hash, role_id, committee_id)
+      VALUES (
+        $1,
+        $2,
+        (SELECT id FROM roles WHERE name = 'COMITATO_ADMIN'),
+        $3
+      )
+      RETURNING id, email, committee_id
+      `,
+      [email, passwordHash, committeeId]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('ERRORE CREAZIONE ADMIN COMITATO:', error);
+
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Email già esistente' });
+    }
+
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+
 // =======================
 // SERVER
 // =======================

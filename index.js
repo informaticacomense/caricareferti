@@ -98,6 +98,28 @@ app.post('/reports', async (req, res) => {
   }
 });
 
+// GET REPORTS BY MATCH
+app.get('/matches/:id/reports', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT r.*, m.team_a, m.team_b
+      FROM reports r
+      JOIN matches m ON m.id = r.match_id
+      WHERE m.id = $1
+      `,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('ERRORE GET REPORTS:', error.message);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 
 // AVVIO SERVER

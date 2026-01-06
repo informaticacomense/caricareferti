@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Carica Referti Minibasket</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f7f7f7;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .report {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .teams {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .meta {
+      color: #555;
+      font-size: 14px;
+    }
+    a {
+      display: inline-block;
+      margin-top: 10px;
+      color: #0066cc;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📄 Elenco Referti</h1>
+  <div id="reports">Caricamento...</div>
+
+  <script>
+    const API_URL = 'https://caricareferti.onrender.com';
+
+    async function loadReports() {
+      const res = await fetch(API_URL + '/reports');
+      const reports = await res.json();
+
+      const container = document.getElementById('reports');
+      container.innerHTML = '';
+
+      if (reports.length === 0) {
+        container.innerHTML = '<p>Nessun referto presente.</p>';
+        return;
+      }
+
+      reports.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'report';
+
+        div.innerHTML = `
+          <div class="teams">${r.team_a} vs ${r.team_b}</div>
+          <div class="meta">
+            📍 ${r.location}<br>
+            📅 ${r.match_date} ⏰ ${r.match_time}<br>
+            🧑‍⚖️ Arbitro: ${r.referee_name}
+          </div>
+          ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank">📥 Apri PDF</a>` : '<em>Nessun PDF</em>'}
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    loadReports();
+  </script>
+
+</body>
+</html>

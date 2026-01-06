@@ -14,10 +14,6 @@ const pool = new Pool({
   }
 });
 
-
-});
-
-
 app.get('/', async (req, res) => {
   try {
     await pool.query('select 1');

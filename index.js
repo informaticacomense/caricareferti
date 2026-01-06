@@ -52,6 +52,35 @@ app.get('/me', requireAuth, async (req, res) => {
   });
 });
 
+function requireSuperAdmin(req, res, next) {
+  if (req.user.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ message: 'Accesso riservato al Super Admin' });
+  }
+  next();
+}
+
+app.post('/committees', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { name, email } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: 'Nome comitato obbligatorio' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO committees (name, email)
+       VALUES ($1, $2)
+       RETURNING id, name, email, created_at`,
+      [name, email || null]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('ERRORE CREAZIONE COMITATO:', error);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 // =======================
 // ROUTE TEST

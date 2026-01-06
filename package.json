@@ -1,4 +1,10 @@
 {
+
+
+  "engines": {
+  "node": "18.x"
+}
+
   "name": "caricareferti-backend",
   "version": "1.0.0",
   "main": "index.js",

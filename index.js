@@ -21,6 +21,39 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme_super_secret';
 
 // =======================
+// MIDDLEWARE AUTH
+// =======================
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Token mancante' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'Token non valido' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded; // { userId, role }
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Token non valido o scaduto' });
+  }
+}
+
+app.get('/me', requireAuth, async (req, res) => {
+  res.json({
+    message: 'Accesso autorizzato',
+    user: req.user
+  });
+});
+
+
+// =======================
 // ROUTE TEST
 // =======================
 app.get('/', async (req, res) => {

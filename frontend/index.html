@@ -38,6 +38,29 @@
 <body>
 
   <h1>📄 Elenco Referti</h1>
+
+  <h2>⬆️ Carica PDF Referto</h2>
+
+<form id="uploadForm">
+  <label>
+    ID Partita:
+    <input type="number" id="matchId" required>
+  </label>
+  <br><br>
+
+  <label>
+    Seleziona PDF:
+    <input type="file" id="pdfFile" accept="application/pdf" required>
+  </label>
+  <br><br>
+
+  <button type="submit">Carica PDF</button>
+</form>
+
+<p id="uploadResult"></p>
+
+<hr>
+
   <div id="reports">Caricamento...</div>
 
   <script>
@@ -74,6 +97,47 @@
     }
 
     loadReports();
+
+
+    <script>
+  const API_URL = 'https://caricareferti.onrender.com';
+
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const matchId = document.getElementById('matchId').value;
+    const fileInput = document.getElementById('pdfFile');
+    const result = document.getElementById('uploadResult');
+
+    if (!fileInput.files.length) {
+      result.textContent = 'Seleziona un file PDF';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('pdf', fileInput.files[0]);
+
+    try {
+      const res = await fetch(`${API_URL}/reports/${matchId}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        result.textContent = data.message || 'Errore upload';
+        return;
+      }
+
+      result.textContent = '✅ PDF caricato con successo';
+      loadReports(); // ricarica elenco
+    } catch (err) {
+      result.textContent = 'Errore di connessione';
+    }
+  });
+</script>
+
   </script>
 
 </body>

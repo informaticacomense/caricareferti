@@ -35,6 +35,20 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// GET MATCHES
+app.get('/matches', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM matches ORDER BY match_date, match_time'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('ERRORE GET MATCHES:', error.message);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+
 // AVVIO SERVER
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

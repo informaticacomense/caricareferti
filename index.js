@@ -8,10 +8,7 @@ app.use(express.json());
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-    require: true
-  }
+  ssl: true
 });
 
 app.get('/', async (req, res) => {
@@ -19,7 +16,7 @@ app.get('/', async (req, res) => {
     await pool.query('select 1');
     res.send('Backend attivo e DB collegato');
   } catch (error) {
-    console.error('ERRORE CONNESSIONE DB:', error.message);
+    console.error('ERRORE CONNESSIONE DB:', error);
     res.status(500).send('Errore DB');
   }
 });

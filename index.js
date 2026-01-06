@@ -73,6 +73,31 @@ app.post('/matches', async (req, res) => {
   }
 });
 
+// POST REPORT
+app.post('/reports', async (req, res) => {
+  const { match_id, referee_name, notes } = req.body;
+
+  if (!match_id || !referee_name) {
+    return res.status(400).json({ message: 'match_id e referee_name obbligatori' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO reports (match_id, referee_name, notes)
+      VALUES ($1, $2, $3)
+      RETURNING *
+      `,
+      [match_id, referee_name, notes || null]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('ERRORE POST REPORT:', error.message);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 
 // AVVIO SERVER

@@ -37,6 +37,19 @@
 </head>
 
 <body>
+<h2>🔐 Login</h2>
+
+<form id="loginForm">
+  <input type="email" id="email" placeholder="Email" required>
+  <br><br>
+  <input type="password" id="password" placeholder="Password" required>
+  <br><br>
+  <button type="submit">Login</button>
+</form>
+
+<p id="loginResult"></p>
+
+<hr>
 
   <h1>📄 Elenco Referti</h1>
 
@@ -137,6 +150,34 @@
 
     loadReports();
   </script>
+<script>
+const API_URL = 'https://caricareferti.onrender.com';
+let currentUser = null;
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch(API_URL + '/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    document.getElementById('loginResult').textContent = data.message;
+    return;
+  }
+
+  currentUser = data;
+  document.getElementById('loginResult').textContent =
+    `✅ Loggato come ${data.role}`;
+});
+</script>
 
 </body>
 </html>

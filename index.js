@@ -14,6 +14,15 @@ const { Pool } = pkg;
    APP
 ========================= */
 const app = express();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// SERVE IL FRONTEND
+app.use('/frontend', express.static(path.join(__dirname, 'frontend')));
+
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 

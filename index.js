@@ -10,6 +10,42 @@ import xlsx from 'xlsx';
 
 const { Pool } = pkg;
 
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email e password obbligatorie' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, email, password, role FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Credenziali non valide' });
+    }
+
+    const user = result.rows[0];
+    const ok = await bcrypt.compare(password, user.password);
+
+    if (!ok) {
+      return res.status(401).json({ message: 'Credenziali non valide' });
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+  } catch (err) {
+    console.error('LOGIN ERROR', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+
 /* =========================
    APP
 ========================= */
@@ -124,6 +160,13 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Errore server' });
   }
 });
+
+function requireAdmin(req, res, next) {
+  if (req.headers.role !== 'admin') {
+    return res.status(403).json({ message: 'Solo admin' });
+  }
+  next();
+}
 
 /* =========================
    MATCHES

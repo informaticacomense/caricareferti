@@ -2,181 +2,188 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Carica Referti Minibasket</title>
+  <title>Caricare Referti Minibasket</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 30px;
-      background: #f7f7f7;
+      background: #f4f6f8;
     }
-    h1 {
-      margin-bottom: 20px;
+
+    h1, h2 {
+      margin-top: 30px;
     }
-    .report {
-      background: white;
-      padding: 15px;
-      margin-bottom: 15px;
+
+    .box {
+      background: #fff;
+      padding: 20px;
       border-radius: 6px;
+      max-width: 500px;
+      margin-bottom: 30px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .teams {
-      font-weight: bold;
-      font-size: 16px;
+
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      margin-bottom: 15px;
     }
-    .meta {
-      color: #555;
-      font-size: 14px;
+
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
     }
-    a {
-      display: inline-block;
-      margin-top: 10px;
-      color: #0066cc;
-      text-decoration: none;
+
+    button:hover {
+      background: #004999;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
     }
   </style>
 </head>
-
 <body>
-<h2>🔐 Login</h2>
 
-<form id="loginForm">
-  <input type="email" id="email" placeholder="Email" required>
-  <br><br>
-  <input type="password" id="password" placeholder="Password" required>
-  <br><br>
-  <button type="submit">Login</button>
-</form>
+<h1>🏀 Gestione Referti Minibasket</h1>
 
-<p id="loginResult"></p>
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <h2>🔐 Login</h2>
 
-<hr>
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <button onclick="login()">Login</button>
 
-  <h1>📄 Elenco Referti</h1>
+  <p id="loginMsg"></p>
+</div>
 
-  <h2>⬆️ Carica PDF Referto</h2>
+<!-- INFO UTENTE -->
+<div class="box hidden" id="userBox">
+  <h2>👤 Utente loggato</h2>
+  <p><strong>Email:</strong> <span id="userEmail"></span></p>
+  <p><strong>Ruolo:</strong> <span id="userRole"></span></p>
+</div>
 
-  <form id="uploadForm">
-    <label>
-      ID Partita:
-      <input type="number" id="matchId" required>
-    </label>
-    <br><br>
+<!-- SUPER ADMIN: CREA COMITATO -->
+<div class="box hidden" id="superAdminBox">
+  <h2>🏛️ Crea Comitato Provinciale</h2>
 
-    <label>
-      Seleziona PDF:
-      <input type="file" id="pdfFile" accept="application/pdf" required>
-    </label>
-    <br><br>
+  <input type="text" id="provincia" placeholder="Provincia (es. Milano)">
+  <input type="email" id="comitatoEmail" placeholder="Email comitato">
+  <input type="password" id="comitatoPassword" placeholder="Password iniziale">
 
-    <button type="submit">Carica PDF</button>
-  </form>
+  <button onclick="createComitato()">Crea Comitato</button>
 
-  <p id="uploadResult"></p>
+  <p id="comitatoMsg"></p>
+</div>
 
-  <hr>
-
-  <div id="reports">Caricamento...</div>
-
-  <script>
-    const API_URL = 'https://caricareferti.onrender.com';
-
-    async function loadReports() {
-      const res = await fetch(API_URL + '/reports');
-      const reports = await res.json();
-
-      const container = document.getElementById('reports');
-      container.innerHTML = '';
-
-      if (!reports.length) {
-        container.innerHTML = '<p>Nessun referto presente.</p>';
-        return;
-      }
-
-      reports.forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'report';
-
-        div.innerHTML = `
-          <div class="teams">${r.team_a} vs ${r.team_b}</div>
-          <div class="meta">
-            📍 ${r.location}<br>
-            📅 ${r.match_date} ⏰ ${r.match_time}<br>
-            🧑‍⚖️ Arbitro: ${r.referee_name}
-          </div>
-          ${r.pdf_url
-            ? `<a href="${r.pdf_url}" target="_blank">📥 Apri PDF</a>`
-            : '<em>Nessun PDF</em>'
-          }
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const matchId = document.getElementById('matchId').value;
-      const fileInput = document.getElementById('pdfFile');
-      const result = document.getElementById('uploadResult');
-
-      if (!fileInput.files.length) {
-        result.textContent = 'Seleziona un file PDF';
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('pdf', fileInput.files[0]);
-
-      try {
-        const res = await fetch(`${API_URL}/reports/${matchId}/upload`, {
-          method: 'POST',
-          body: formData
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          result.textContent = data.message || 'Errore upload';
-          return;
-        }
-
-        result.textContent = '✅ PDF caricato con successo';
-        loadReports();
-      } catch {
-        result.textContent = 'Errore di connessione';
-      }
-    });
-
-    loadReports();
-  </script>
 <script>
 const API_URL = 'https://caricareferti.onrender.com';
 let currentUser = null;
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+/* ======================
+   LOGIN
+====================== */
+async function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const msg = document.getElementById('loginMsg');
 
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  msg.textContent = '';
 
-  const res = await fetch(API_URL + '/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
+  try {
+    const res = await fetch(API_URL + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!res.ok) {
-    document.getElementById('loginResult').textContent = data.message;
+    if (!res.ok) {
+      msg.textContent = data.message;
+      msg.className = 'error';
+      return;
+    }
+
+    currentUser = data;
+
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('userBox').classList.remove('hidden');
+
+    document.getElementById('userEmail').textContent = data.email;
+    document.getElementById('userRole').textContent = data.role;
+
+    if (data.role === 'superadmin') {
+      document.getElementById('superAdminBox').classList.remove('hidden');
+    }
+
+  } catch (e) {
+    msg.textContent = 'Errore di connessione';
+    msg.className = 'error';
+  }
+}
+
+/* ======================
+   CREA COMITATO
+====================== */
+async function createComitato() {
+  const provincia = document.getElementById('provincia').value;
+  const email = document.getElementById('comitatoEmail').value;
+  const password = document.getElementById('comitatoPassword').value;
+  const msg = document.getElementById('comitatoMsg');
+
+  msg.textContent = '';
+
+  if (!provincia || !email || !password) {
+    msg.textContent = 'Tutti i campi sono obbligatori';
+    msg.className = 'error';
     return;
   }
 
-  currentUser = data;
-  document.getElementById('loginResult').textContent =
-    `✅ Loggato come ${data.role}`;
-});
+  try {
+    const res = await fetch(API_URL + '/admin/create-comitato', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        role: currentUser.role
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        province: provincia
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.textContent = data.message || 'Errore';
+      msg.className = 'error';
+      return;
+    }
+
+    msg.textContent = '✅ Comitato creato con successo';
+    msg.className = 'success';
+
+  } catch (e) {
+    msg.textContent = 'Errore di connessione';
+    msg.className = 'error';
+  }
+}
 </script>
 
 </body>

@@ -35,31 +35,32 @@
     }
   </style>
 </head>
+
 <body>
 
   <h1>📄 Elenco Referti</h1>
 
   <h2>⬆️ Carica PDF Referto</h2>
 
-<form id="uploadForm">
-  <label>
-    ID Partita:
-    <input type="number" id="matchId" required>
-  </label>
-  <br><br>
+  <form id="uploadForm">
+    <label>
+      ID Partita:
+      <input type="number" id="matchId" required>
+    </label>
+    <br><br>
 
-  <label>
-    Seleziona PDF:
-    <input type="file" id="pdfFile" accept="application/pdf" required>
-  </label>
-  <br><br>
+    <label>
+      Seleziona PDF:
+      <input type="file" id="pdfFile" accept="application/pdf" required>
+    </label>
+    <br><br>
 
-  <button type="submit">Carica PDF</button>
-</form>
+    <button type="submit">Carica PDF</button>
+  </form>
 
-<p id="uploadResult"></p>
+  <p id="uploadResult"></p>
 
-<hr>
+  <hr>
 
   <div id="reports">Caricamento...</div>
 
@@ -73,7 +74,7 @@
       const container = document.getElementById('reports');
       container.innerHTML = '';
 
-      if (reports.length === 0) {
+      if (!reports.length) {
         container.innerHTML = '<p>Nessun referto presente.</p>';
         return;
       }
@@ -89,55 +90,52 @@
             📅 ${r.match_date} ⏰ ${r.match_time}<br>
             🧑‍⚖️ Arbitro: ${r.referee_name}
           </div>
-          ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank">📥 Apri PDF</a>` : '<em>Nessun PDF</em>'}
+          ${r.pdf_url
+            ? `<a href="${r.pdf_url}" target="_blank">📥 Apri PDF</a>`
+            : '<em>Nessun PDF</em>'
+          }
         `;
 
         container.appendChild(div);
       });
     }
 
-    loadReports();
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
 
+      const matchId = document.getElementById('matchId').value;
+      const fileInput = document.getElementById('pdfFile');
+      const result = document.getElementById('uploadResult');
 
-    <script>
-  const API_URL = 'https://caricareferti.onrender.com';
-
-  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const matchId = document.getElementById('matchId').value;
-    const fileInput = document.getElementById('pdfFile');
-    const result = document.getElementById('uploadResult');
-
-    if (!fileInput.files.length) {
-      result.textContent = 'Seleziona un file PDF';
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('pdf', fileInput.files[0]);
-
-    try {
-      const res = await fetch(`${API_URL}/reports/${matchId}/upload`, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        result.textContent = data.message || 'Errore upload';
+      if (!fileInput.files.length) {
+        result.textContent = 'Seleziona un file PDF';
         return;
       }
 
-      result.textContent = '✅ PDF caricato con successo';
-      loadReports(); // ricarica elenco
-    } catch (err) {
-      result.textContent = 'Errore di connessione';
-    }
-  });
-</script>
+      const formData = new FormData();
+      formData.append('pdf', fileInput.files[0]);
 
+      try {
+        const res = await fetch(`${API_URL}/reports/${matchId}/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          result.textContent = data.message || 'Errore upload';
+          return;
+        }
+
+        result.textContent = '✅ PDF caricato con successo';
+        loadReports();
+      } catch {
+        result.textContent = 'Errore di connessione';
+      }
+    });
+
+    loadReports();
   </script>
 
 </body>

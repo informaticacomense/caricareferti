@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Caricare Referti Minibasket</title>
+  <title>Gestione Referti Minibasket</title>
 
   <style>
     body {
@@ -19,16 +19,17 @@
       background: #fff;
       padding: 20px;
       border-radius: 6px;
-      max-width: 500px;
+      max-width: 520px;
       margin-bottom: 30px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    input, select, button {
+    input, button {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
       margin-top: 8px;
       margin-bottom: 15px;
+      font-size: 14px;
     }
 
     button {
@@ -36,6 +37,7 @@
       color: white;
       border: none;
       cursor: pointer;
+      border-radius: 4px;
     }
 
     button:hover {
@@ -48,10 +50,12 @@
 
     .success {
       color: green;
+      margin-top: 10px;
     }
 
     .error {
       color: red;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -63,9 +67,10 @@
 <div class="box" id="loginBox">
   <h2>🔐 Login</h2>
 
-  <input type="email" id="loginEmail" placeholder="Email">
-  <input type="password" id="loginPassword" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
+  <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+
+  <button id="loginBtn">Login</button>
 
   <p id="loginMsg"></p>
 </div>
@@ -77,7 +82,7 @@
   <p><strong>Ruolo:</strong> <span id="userRole"></span></p>
 </div>
 
-<!-- SUPER ADMIN: CREA COMITATO -->
+<!-- SUPER ADMIN -->
 <div class="box hidden" id="superAdminBox">
   <h2>🏛️ Crea Comitato Provinciale</h2>
 
@@ -85,7 +90,7 @@
   <input type="email" id="comitatoEmail" placeholder="Email comitato">
   <input type="password" id="comitatoPassword" placeholder="Password iniziale">
 
-  <button onclick="createComitato()">Crea Comitato</button>
+  <button id="createComitatoBtn">Crea Comitato</button>
 
   <p id="comitatoMsg"></p>
 </div>
@@ -98,14 +103,21 @@ let currentUser = null;
    LOGIN
 ====================== */
 async function login() {
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
   const msg = document.getElementById('loginMsg');
 
   msg.textContent = '';
+  msg.className = '';
+
+  if (!email || !password) {
+    msg.textContent = 'Inserisci email e password';
+    msg.className = 'error';
+    return;
+  }
 
   try {
-    const res = await fetch(API_URL + '/login', {
+    const res = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -114,25 +126,27 @@ async function login() {
     const data = await res.json();
 
     if (!res.ok) {
-      msg.textContent = data.message;
+      msg.textContent = data.message || 'Login fallito';
       msg.className = 'error';
       return;
     }
 
     currentUser = data;
 
+    // mostra info utente
     document.getElementById('loginBox').classList.add('hidden');
     document.getElementById('userBox').classList.remove('hidden');
 
     document.getElementById('userEmail').textContent = data.email;
     document.getElementById('userRole').textContent = data.role;
 
+    // solo superadmin
     if (data.role === 'superadmin') {
       document.getElementById('superAdminBox').classList.remove('hidden');
     }
 
-  } catch (e) {
-    msg.textContent = 'Errore di connessione';
+  } catch (err) {
+    msg.textContent = 'Errore di connessione al server';
     msg.className = 'error';
   }
 }
@@ -141,12 +155,13 @@ async function login() {
    CREA COMITATO
 ====================== */
 async function createComitato() {
-  const provincia = document.getElementById('provincia').value;
-  const email = document.getElementById('comitatoEmail').value;
-  const password = document.getElementById('comitatoPassword').value;
+  const provincia = document.getElementById('provincia').value.trim();
+  const email = document.getElementById('comitatoEmail').value.trim();
+  const password = document.getElementById('comitatoPassword').value.trim();
   const msg = document.getElementById('comitatoMsg');
 
   msg.textContent = '';
+  msg.className = '';
 
   if (!provincia || !email || !password) {
     msg.textContent = 'Tutti i campi sono obbligatori';
@@ -155,11 +170,11 @@ async function createComitato() {
   }
 
   try {
-    const res = await fetch(API_URL + '/admin/create-comitato', {
+    const res = await fetch(`${API_URL}/admin/create-comitato`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        role: currentUser.role
+        'role': currentUser.role
       },
       body: JSON.stringify({
         email,
@@ -179,11 +194,21 @@ async function createComitato() {
     msg.textContent = '✅ Comitato creato con successo';
     msg.className = 'success';
 
-  } catch (e) {
-    msg.textContent = 'Errore di connessione';
+    document.getElementById('provincia').value = '';
+    document.getElementById('comitatoEmail').value = '';
+    document.getElementById('comitatoPassword').value = '';
+
+  } catch (err) {
+    msg.textContent = 'Errore di connessione al server';
     msg.className = 'error';
   }
 }
+
+/* ======================
+   EVENTI
+====================== */
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('createComitatoBtn').addEventListener('click', createComitato);
 </script>
 
 </body>

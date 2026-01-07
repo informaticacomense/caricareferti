@@ -118,6 +118,57 @@ app.post('/login', async (req, res) => {
 });
 
 /* =========================
+   SUPER ADMIN - CREA COMITATO
+========================= */
+app.post('/admin/create-comitato', async (req, res) => {
+  // sicurezza base
+  if (req.headers.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Solo superadmin' });
+  }
+
+  const { email, password, province } = req.body;
+
+  if (!email || !password || !province) {
+    return res.status(400).json({ message: 'Campi obbligatori mancanti' });
+  }
+
+  try {
+    // verifica email già esistente
+    const check = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (check.rows.length > 0) {
+      return res.status(409).json({ message: 'Email già esistente' });
+    }
+
+    // hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // inserimento comitato
+    const result = await pool.query(
+      `
+      INSERT INTO users (email, password, role, province)
+      VALUES ($1, $2, 'comitato', $3)
+      RETURNING id, email, role, province
+      `,
+      [email, hashed, province]
+    );
+
+    res.status(201).json({
+      message: 'Comitato creato',
+      comitato: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error('ERRORE CREA COMITATO:', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
+
+/* =========================
    MATCHES
 ========================= */
 app.get('/matches', async (req, res) => {

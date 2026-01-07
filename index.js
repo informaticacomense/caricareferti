@@ -95,7 +95,7 @@ app.post('/login', async (req, res) => {
   }
 
   const result = await pool.query(
-    'SELECT id, email, password, role FROM users WHERE email = $1',
+    'SELECT id, email, password_hash, role FROM users WHERE email = $1',
     [email]
   );
 
@@ -104,7 +104,7 @@ app.post('/login', async (req, res) => {
   }
 
   const user = result.rows[0];
-  const ok = await bcrypt.compare(password, user.password);
+  const ok = await bcrypt.compare(password, user.password_hash);
 
   if (!ok) {
     return res.status(401).json({ message: 'Credenziali non valide' });

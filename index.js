@@ -161,12 +161,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-function requireAdmin(req, res, next) {
-  if (req.headers.role !== 'admin') {
-    return res.status(403).json({ message: 'Solo admin' });
-  }
-  next();
-}
+
 
 /* =========================
    MATCHES

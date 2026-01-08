@@ -10,11 +10,7 @@
       margin: 30px;
       background: #f4f6f8;
     }
-
-    h1, h2 {
-      margin-top: 30px;
-    }
-
+    h1, h2 { margin-top: 30px; }
     .box {
       background: #fff;
       padding: 20px;
@@ -23,15 +19,12 @@
       margin-bottom: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-
     input, button {
       width: 100%;
       padding: 10px;
       margin-top: 8px;
       margin-bottom: 15px;
-      font-size: 14px;
     }
-
     button {
       background: #0066cc;
       color: white;
@@ -39,26 +32,13 @@
       cursor: pointer;
       border-radius: 4px;
     }
-
-    button:hover {
-      background: #004999;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .success {
-      color: green;
-      margin-top: 10px;
-    }
-
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
+    button:hover { background: #004999; }
+    .hidden { display: none; }
+    .success { color: green; }
+    .error { color: red; }
   </style>
 </head>
+
 <body>
 
 <h1>🏀 Gestione Referti Minibasket</h1>
@@ -66,53 +46,53 @@
 <!-- LOGIN -->
 <div class="box" id="loginBox">
   <h2>🔐 Login</h2>
-
-  <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
-  <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
-
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPassword" placeholder="Password">
   <button id="loginBtn">Login</button>
-
   <p id="loginMsg"></p>
 </div>
 
+<!-- RESET PASSWORD -->
 <div class="box">
   <h2>🔁 Password dimenticata</h2>
-
   <input type="email" id="resetEmail" placeholder="Email">
   <input type="password" id="resetPassword" placeholder="Nuova password">
-
-  <button onclick="resetPassword()">Reimposta password</button>
-
+  <button id="resetBtn">Reimposta password</button>
   <p id="resetMsg"></p>
 </div>
 
-  
-<!-- INFO UTENTE -->
+<!-- UTENTE -->
 <div class="box hidden" id="userBox">
   <h2>👤 Utente loggato</h2>
-  <p><strong>Email:</strong> <span id="userEmail"></span></p>
-  <p><strong>Ruolo:</strong> <span id="userRole"></span></p>
-
-  <button onclick="logout()" style="background:#cc0000;margin-top:15px">
-    🚪 Logout
-  </button>
+  <p>Email: <span id="userEmail"></span></p>
+  <p>Ruolo: <span id="userRole"></span></p>
+  <button onclick="logout()" style="background:#cc0000">🚪 Logout</button>
 </div>
 
-
-<!-- SUPER ADMIN -->
+<!-- SUPERADMIN -->
 <div class="box hidden" id="superAdminBox">
   <h2>🏛️ Crea Comitato Provinciale</h2>
-
-  <input type="text" id="provincia" placeholder="Provincia (es. Milano)">
+  <input type="text" id="provincia" placeholder="Provincia">
   <input type="email" id="comitatoEmail" placeholder="Email comitato">
-  <input type="password" id="comitatoPassword" placeholder="Password iniziale">
-
+  <input type="password" id="comitatoPassword" placeholder="Password">
   <button id="createComitatoBtn">Crea Comitato</button>
-
   <p id="comitatoMsg"></p>
 </div>
 
+<!-- DASHBOARD COMITATO -->
+<div class="box hidden" id="comitatoDashboard">
+  <h2>🏀 Dashboard Comitato</h2>
+  <ul>
+    <li>📅 Gestione partite</li>
+    <li>📥 Import Excel</li>
+    <li>📄 Caricamento referti</li>
+  </ul>
+</div>
+
 <script>
+/* ======================
+   CONFIG
+====================== */
 const API_URL = 'https://caricareferti.onrender.com';
 let currentUser = null;
 
@@ -120,56 +100,43 @@ let currentUser = null;
    LOGIN
 ====================== */
 async function login() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value.trim();
-  const msg = document.getElementById('loginMsg');
-
-  msg.textContent = '';
-  msg.className = '';
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value.trim();
+  loginMsg.textContent = '';
 
   if (!email || !password) {
-    msg.textContent = 'Inserisci email e password';
-    msg.className = 'error';
+    loginMsg.textContent = 'Inserisci email e password';
+    loginMsg.className = 'error';
     return;
   }
 
-  try {
-    const res = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+  const res = await fetch(API_URL + '/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ email, password })
+  });
 
-    const data = await res.json();
+  const data = await res.json();
 
-    if (!res.ok) {
-      msg.textContent = data.message || 'Login fallito';
-      msg.className = 'error';
-      return;
-    }
+  if (!res.ok) {
+    loginMsg.textContent = data.message;
+    loginMsg.className = 'error';
+    return;
+  }
 
-    currentUser = data;
+  currentUser = data;
 
-    // mostra info utente
-    document.getElementById('loginBox').classList.add('hidden');
-    document.getElementById('userBox').classList.remove('hidden');
+  loginBox.classList.add('hidden');
+  userBox.classList.remove('hidden');
+  userEmail.textContent = data.email;
+  userRole.textContent = data.role;
 
-    document.getElementById('userEmail').textContent = data.email;
-    document.getElementById('userRole').textContent = data.role;
+  if (data.role === 'superadmin') {
+    superAdminBox.classList.remove('hidden');
+  }
 
-    // solo superadmin
-    if (data.role === 'superadmin') {
-      document.getElementById('superAdminBox').classList.remove('hidden');
-    }
-
-    if (data.role === 'comitato') {
-  document.getElementById('comitatoDashboard').classList.remove('hidden');
-}
-
-
-  } catch (err) {
-    msg.textContent = 'Errore di connessione al server';
-    msg.className = 'error';
+  if (data.role === 'comitato') {
+    comitatoDashboard.classList.remove('hidden');
   }
 }
 
@@ -177,136 +144,60 @@ async function login() {
    CREA COMITATO
 ====================== */
 async function createComitato() {
-  const provincia = document.getElementById('provincia').value.trim();
-  const email = document.getElementById('comitatoEmail').value.trim();
-  const password = document.getElementById('comitatoPassword').value.trim();
-  const msg = document.getElementById('comitatoMsg');
+  const res = await fetch(API_URL + '/admin/create-comitato', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      role: currentUser.role
+    },
+    body: JSON.stringify({
+      email: comitatoEmail.value,
+      password: comitatoPassword.value,
+      province: provincia.value
+    })
+  });
 
-  msg.textContent = '';
-  msg.className = '';
-
-  if (!provincia || !email || !password) {
-    msg.textContent = 'Tutti i campi sono obbligatori';
-    msg.className = 'error';
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_URL}/admin/create-comitato`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'role': currentUser.role
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        province: provincia
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      msg.textContent = data.message || 'Errore';
-      msg.className = 'error';
-      return;
-    }
-
-    msg.textContent = '✅ Comitato creato con successo';
-    msg.className = 'success';
-
-    document.getElementById('provincia').value = '';
-    document.getElementById('comitatoEmail').value = '';
-    document.getElementById('comitatoPassword').value = '';
-
-  } catch (err) {
-    msg.textContent = 'Errore di connessione al server';
-    msg.className = 'error';
-  }
+  const data = await res.json();
+  comitatoMsg.textContent = data.message;
+  comitatoMsg.className = res.ok ? 'success' : 'error';
 }
 
-<div class="box hidden" id="comitatoDashboard">
-  <h2>🏀 Dashboard Comitato Provinciale</h2>
+/* ======================
+   RESET PASSWORD
+====================== */
+async function resetPasswordFn() {
+  const res = await fetch(API_URL + '/reset-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      email: resetEmail.value,
+      newPassword: resetPassword.value
+    })
+  });
 
-  <p>Da qui potrai:</p>
-  <ul>
-    <li>📅 Gestire campionati e categorie</li>
-    <li>📥 Importare calendari Excel</li>
-    <li>📄 Caricare referti PDF</li>
-  </ul>
+  const data = await res.json();
+  resetMsg.textContent = data.message;
+  resetMsg.className = res.ok ? 'success' : 'error';
+}
 
-  <button onclick="alert('Prossimo step')">
-    Inizia
-  </button>
-</div>
+/* ======================
+   LOGOUT
+====================== */
+function logout() {
+  currentUser = null;
+  loginBox.classList.remove('hidden');
+  userBox.classList.add('hidden');
+  superAdminBox.classList.add('hidden');
+  comitatoDashboard.classList.add('hidden');
+}
 
-  
 /* ======================
    EVENTI
 ====================== */
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('createComitatoBtn').addEventListener('click', createComitato);
+loginBtn.addEventListener('click', login);
+createComitatoBtn.addEventListener('click', createComitato);
+resetBtn.addEventListener('click', resetPasswordFn);
 </script>
 
-<script>
-async function resetPassword() {
-  const email = document.getElementById('resetEmail').value;
-  const newPassword = document.getElementById('resetPassword').value;
-  const msg = document.getElementById('resetMsg');
-
-  msg.textContent = '';
-
-  if (!email || !newPassword) {
-    msg.textContent = 'Email e password obbligatorie';
-    msg.className = 'error';
-    return;
-  }
-
-  try {
-    const res = await fetch(API_URL + '/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, newPassword })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      msg.textContent = data.message || 'Errore';
-      msg.className = 'error';
-      return;
-    }
-
-    msg.textContent = '✅ Password aggiornata, ora puoi fare login';
-    msg.className = 'success';
-
-  } catch (e) {
-    msg.textContent = 'Errore di connessione';
-    msg.className = 'error';
-  }
-}
-</script>
-<script>
-function logout() {
-  // reset stato
-  currentUser = null;
-
-  // reset campi login
-  document.getElementById('loginEmail').value = '';
-  document.getElementById('loginPassword').value = '';
-  document.getElementById('loginMsg').textContent = '';
-
-  // nascondi tutte le aree protette
-  document.getElementById('userBox').classList.add('hidden');
-  document.getElementById('superAdminBox').classList.add('hidden');
-  document.getElementById('comitatoDashboard').classList.add('hidden');
-
-  // mostra login
-  document.getElementById('loginBox').classList.remove('hidden');
-}
-</script>
-
-  
 </body>
 </html>

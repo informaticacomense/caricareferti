@@ -75,6 +75,18 @@
   <p id="loginMsg"></p>
 </div>
 
+<div class="box">
+  <h2>🔁 Password dimenticata</h2>
+
+  <input type="email" id="resetEmail" placeholder="Email">
+  <input type="password" id="resetPassword" placeholder="Nuova password">
+
+  <button onclick="resetPassword()">Reimposta password</button>
+
+  <p id="resetMsg"></p>
+</div>
+
+  
 <!-- INFO UTENTE -->
 <div class="box hidden" id="userBox">
   <h2>👤 Utente loggato</h2>
@@ -211,5 +223,45 @@ document.getElementById('loginBtn').addEventListener('click', login);
 document.getElementById('createComitatoBtn').addEventListener('click', createComitato);
 </script>
 
+<script>
+async function resetPassword() {
+  const email = document.getElementById('resetEmail').value;
+  const newPassword = document.getElementById('resetPassword').value;
+  const msg = document.getElementById('resetMsg');
+
+  msg.textContent = '';
+
+  if (!email || !newPassword) {
+    msg.textContent = 'Email e password obbligatorie';
+    msg.className = 'error';
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL + '/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, newPassword })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.textContent = data.message || 'Errore';
+      msg.className = 'error';
+      return;
+    }
+
+    msg.textContent = '✅ Password aggiornata, ora puoi fare login';
+    msg.className = 'success';
+
+  } catch (e) {
+    msg.textContent = 'Errore di connessione';
+    msg.className = 'error';
+  }
+}
+</script>
+
+  
 </body>
 </html>

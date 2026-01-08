@@ -83,6 +83,15 @@
 <div class="box hidden" id="comitatoDashboard">
   <h2>🏀 Dashboard Comitato</h2>
 
+  <h3>➕ Crea Stagione Sportiva</h3>
+
+<input type="text" id="newSeasonName" placeholder="Es. 2025/2026">
+<button onclick="createSeason()">Crea stagione</button>
+
+<p id="seasonMsg"></p>
+<hr>
+
+
   <label>Stagione sportiva</label>
   <select id="seasonSelect"></select>
 
@@ -270,6 +279,39 @@ loginBtn.onclick = login;
 resetBtn.onclick = resetPasswordFn;
 createComitatoBtn.onclick = createComitato;
 importBtn.onclick = importMatches;
+
+  async function createSeason() {
+  const msg = document.getElementById('seasonMsg');
+  msg.textContent = '';
+
+  const name = document.getElementById('newSeasonName').value.trim();
+  if (!name) {
+    msg.textContent = 'Inserisci il nome della stagione';
+    msg.className = 'error';
+    return;
+  }
+
+  const res = await fetch(API_URL + '/seasons', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    msg.textContent = data.message;
+    msg.className = 'error';
+    return;
+  }
+
+  msg.textContent = '✅ Stagione creata';
+  msg.className = 'success';
+  document.getElementById('newSeasonName').value = '';
+
+  loadSeasons(); // ricarica il select
+}
+
 </script>
 
 </body>

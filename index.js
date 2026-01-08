@@ -149,7 +149,7 @@ app.post('/admin/create-comitato', async (req, res) => {
     // inserimento comitato
     const result = await pool.query(
       `
-      INSERT INTO users (email, password, role, province)
+      INSERT INTO users (email, password_hash, role, province)
       VALUES ($1, $2, 'comitato', $3)
       RETURNING id, email, role, province
       `,
@@ -271,6 +271,45 @@ app.post('/matches/import', upload.single('file'), async (req, res) => {
 
   res.json({ imported: count });
 });
+
+/* =========================
+   RESET PASSWORD
+========================= */
+app.post('/reset-password', async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ message: 'Email e nuova password obbligatorie' });
+  }
+
+  try {
+    // verifica utente
+    const check = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ message: 'Utente non trovato' });
+    }
+
+    // hash nuova password
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    // update password
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE email = $2',
+      [hashed, email]
+    );
+
+    res.json({ message: 'Password aggiornata con successo' });
+
+  } catch (err) {
+    console.error('RESET PASSWORD ERROR:', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 /* =========================
    SERVER

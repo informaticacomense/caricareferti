@@ -81,13 +81,26 @@
 
 <!-- DASHBOARD COMITATO -->
 <div class="box hidden" id="comitatoDashboard">
-  <h2>🏀 Dashboard Comitato</h2>
-  <ul>
-    <li>📅 Gestione partite</li>
-    <li>📥 Import Excel</li>
-    <li>📄 Caricamento referti</li>
-  </ul>
+  <h2>🏀 Gestione Partite</h2>
+
+  <h3>➕ Aggiungi Partita</h3>
+
+  <input type="text" id="teamA" placeholder="Squadra A">
+  <input type="text" id="teamB" placeholder="Squadra B">
+  <input type="date" id="matchDate">
+  <input type="time" id="matchTime">
+  <input type="text" id="location" placeholder="Campo / Palestra">
+
+  <button onclick="createMatch()">Crea Partita</button>
+
+  <p id="matchMsg"></p>
+
+  <hr>
+
+  <h3>📋 Elenco Partite</h3>
+  <div id="matchesList">Caricamento...</div>
 </div>
+
 
 <script>
 /* ======================
@@ -137,6 +150,8 @@ async function login() {
 
   if (data.role === 'comitato') {
     comitatoDashboard.classList.remove('hidden');
+    loadMatches();
+
   }
 }
 
@@ -197,6 +212,74 @@ function logout() {
 loginBtn.addEventListener('click', login);
 createComitatoBtn.addEventListener('click', createComitato);
 resetBtn.addEventListener('click', resetPasswordFn);
+
+  async function loadMatches() {
+  const container = document.getElementById('matchesList');
+  container.textContent = 'Caricamento...';
+
+  try {
+    const res = await fetch(API_URL + '/matches');
+    const data = await res.json();
+
+    if (!data.length) {
+      container.innerHTML = '<p>Nessuna partita presente</p>';
+      return;
+    }
+
+    container.innerHTML = data.map(m => `
+      <div style="margin-bottom:10px">
+        <strong>${m.team_a} vs ${m.team_b}</strong><br>
+        📅 ${m.match_date} ⏰ ${m.match_time}<br>
+        📍 ${m.location}
+      </div>
+    `).join('');
+
+  } catch {
+    container.textContent = 'Errore caricamento partite';
+  }
+}
+
+async function createMatch() {
+  const msg = document.getElementById('matchMsg');
+  msg.textContent = '';
+
+  const body = {
+    team_a: document.getElementById('teamA').value,
+    team_b: document.getElementById('teamB').value,
+    match_date: document.getElementById('matchDate').value,
+    match_time: document.getElementById('matchTime').value,
+    location: document.getElementById('location').value
+  };
+
+  try {
+    const res = await fetch(API_URL + '/matches', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        role: currentUser.role
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.textContent = data.message || 'Errore';
+      msg.className = 'error';
+      return;
+    }
+
+    msg.textContent = '✅ Partita creata';
+    msg.className = 'success';
+
+    loadMatches();
+
+  } catch {
+    msg.textContent = 'Errore di connessione';
+    msg.className = 'error';
+  }
+}
+
 </script>
 
 </body>

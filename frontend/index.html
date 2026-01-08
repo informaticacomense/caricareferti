@@ -92,7 +92,12 @@
   <h2>👤 Utente loggato</h2>
   <p><strong>Email:</strong> <span id="userEmail"></span></p>
   <p><strong>Ruolo:</strong> <span id="userRole"></span></p>
+
+  <button onclick="logout()" style="background:#cc0000;margin-top:15px">
+    🚪 Logout
+  </button>
 </div>
+
 
 <!-- SUPER ADMIN -->
 <div class="box hidden" id="superAdminBox">
@@ -280,6 +285,25 @@ async function resetPassword() {
     msg.textContent = 'Errore di connessione';
     msg.className = 'error';
   }
+}
+</script>
+<script>
+function logout() {
+  // reset stato
+  currentUser = null;
+
+  // reset campi login
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginMsg').textContent = '';
+
+  // nascondi tutte le aree protette
+  document.getElementById('userBox').classList.add('hidden');
+  document.getElementById('superAdminBox').classList.add('hidden');
+  document.getElementById('comitatoDashboard').classList.add('hidden');
+
+  // mostra login
+  document.getElementById('loginBox').classList.remove('hidden');
 }
 </script>
 

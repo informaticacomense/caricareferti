@@ -10,7 +10,7 @@
       margin: 30px;
       background: #f4f6f8;
     }
-    h1, h2 { margin-top: 30px; }
+    h1, h2, h3 { margin-top: 20px; }
     .box {
       background: #fff;
       padding: 20px;
@@ -19,7 +19,7 @@
       margin-bottom: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    input, button {
+    input, select, button {
       width: 100%;
       padding: 10px;
       margin-top: 8px;
@@ -64,8 +64,8 @@
 <!-- UTENTE -->
 <div class="box hidden" id="userBox">
   <h2>👤 Utente loggato</h2>
-  <p>Email: <span id="userEmail"></span></p>
-  <p>Ruolo: <span id="userRole"></span></p>
+  <p>Email: <strong><span id="userEmail"></span></strong></p>
+  <p>Ruolo: <strong><span id="userRole"></span></strong></p>
   <button onclick="logout()" style="background:#cc0000">🚪 Logout</button>
 </div>
 
@@ -74,33 +74,34 @@
   <h2>🏛️ Crea Comitato Provinciale</h2>
   <input type="text" id="provincia" placeholder="Provincia">
   <input type="email" id="comitatoEmail" placeholder="Email comitato">
-  <input type="password" id="comitatoPassword" placeholder="Password">
+  <input type="password" id="comitatoPassword" placeholder="Password iniziale">
   <button id="createComitatoBtn">Crea Comitato</button>
   <p id="comitatoMsg"></p>
 </div>
 
 <!-- DASHBOARD COMITATO -->
 <div class="box hidden" id="comitatoDashboard">
-  <h2>🏀 Gestione Partite</h2>
+  <h2>🏀 Dashboard Comitato</h2>
 
-  <h3>➕ Aggiungi Partita</h3>
+  <label>Stagione sportiva</label>
+  <select id="seasonSelect"></select>
 
-  <input type="text" id="teamA" placeholder="Squadra A">
-  <input type="text" id="teamB" placeholder="Squadra B">
-  <input type="date" id="matchDate">
-  <input type="time" id="matchTime">
-  <input type="text" id="location" placeholder="Campo / Palestra">
+  <label>Categoria</label>
+  <select id="categorySelect"></select>
 
-  <button onclick="createMatch()">Crea Partita</button>
+  <label>Fase</label>
+  <select id="phaseSelect"></select>
 
-  <p id="matchMsg"></p>
+  <label>Girone</label>
+  <select id="groupSelect"></select>
 
   <hr>
 
-  <h3>📋 Elenco Partite</h3>
-  <div id="matchesList">Caricamento...</div>
+  <h3>📥 Importa partite da Excel</h3>
+  <input type="file" id="excelFile" accept=".xlsx">
+  <button id="importBtn">Importa partite</button>
+  <p id="importMsg"></p>
 </div>
-
 
 <script>
 /* ======================
@@ -113,20 +114,15 @@ let currentUser = null;
    LOGIN
 ====================== */
 async function login() {
-  const email = loginEmail.value.trim();
-  const password = loginPassword.value.trim();
   loginMsg.textContent = '';
-
-  if (!email || !password) {
-    loginMsg.textContent = 'Inserisci email e password';
-    loginMsg.className = 'error';
-    return;
-  }
 
   const res = await fetch(API_URL + '/login', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({
+      email: loginEmail.value,
+      password: loginPassword.value
+    })
   });
 
   const data = await res.json();
@@ -141,6 +137,7 @@ async function login() {
 
   loginBox.classList.add('hidden');
   userBox.classList.remove('hidden');
+
   userEmail.textContent = data.email;
   userRole.textContent = data.role;
 
@@ -150,9 +147,37 @@ async function login() {
 
   if (data.role === 'comitato') {
     comitatoDashboard.classList.remove('hidden');
-    loadMatches();
-
+    loadSeasons();
   }
+}
+
+/* ======================
+   LOGOUT
+====================== */
+function logout() {
+  currentUser = null;
+  loginBox.classList.remove('hidden');
+  userBox.classList.add('hidden');
+  superAdminBox.classList.add('hidden');
+  comitatoDashboard.classList.add('hidden');
+}
+
+/* ======================
+   RESET PASSWORD
+====================== */
+async function resetPasswordFn() {
+  const res = await fetch(API_URL + '/reset-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      email: resetEmail.value,
+      newPassword: resetPassword.value
+    })
+  });
+
+  const data = await res.json();
+  resetMsg.textContent = data.message;
+  resetMsg.className = res.ok ? 'success' : 'error';
 }
 
 /* ======================
@@ -178,109 +203,75 @@ async function createComitato() {
 }
 
 /* ======================
-   RESET PASSWORD
+   SELECT A CASCATA
 ====================== */
-async function resetPasswordFn() {
-  const res = await fetch(API_URL + '/reset-password', {
+async function loadSeasons() {
+  const res = await fetch(API_URL + '/seasons');
+  const data = await res.json();
+  seasonSelect.innerHTML = '<option value="">Seleziona</option>';
+  data.forEach(s => seasonSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+}
+
+seasonSelect.addEventListener('change', async () => {
+  categorySelect.innerHTML = '';
+  phaseSelect.innerHTML = '';
+  groupSelect.innerHTML = '';
+  const res = await fetch(`${API_URL}/categories?seasonId=${seasonSelect.value}`);
+  const data = await res.json();
+  categorySelect.innerHTML = '<option value="">Seleziona</option>';
+  data.forEach(c => categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+});
+
+categorySelect.addEventListener('change', async () => {
+  phaseSelect.innerHTML = '';
+  groupSelect.innerHTML = '';
+  const res = await fetch(`${API_URL}/phases?categoryId=${categorySelect.value}`);
+  const data = await res.json();
+  phaseSelect.innerHTML = '<option value="">Seleziona</option>';
+  data.forEach(p => phaseSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+});
+
+phaseSelect.addEventListener('change', async () => {
+  const res = await fetch(`${API_URL}/groups?phaseId=${phaseSelect.value}`);
+  const data = await res.json();
+  groupSelect.innerHTML = '<option value="">Seleziona</option>';
+  data.forEach(g => groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`);
+});
+
+/* ======================
+   IMPORT EXCEL
+====================== */
+async function importMatches() {
+  importMsg.textContent = '';
+
+  if (!groupSelect.value || !excelFile.files.length) {
+    importMsg.textContent = 'Seleziona girone e file Excel';
+    importMsg.className = 'error';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('file', excelFile.files[0]);
+
+  const res = await fetch(`${API_URL}/matches/import/${groupSelect.value}`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      email: resetEmail.value,
-      newPassword: resetPassword.value
-    })
+    body: fd
   });
 
   const data = await res.json();
-  resetMsg.textContent = data.message;
-  resetMsg.className = res.ok ? 'success' : 'error';
-}
-
-/* ======================
-   LOGOUT
-====================== */
-function logout() {
-  currentUser = null;
-  loginBox.classList.remove('hidden');
-  userBox.classList.add('hidden');
-  superAdminBox.classList.add('hidden');
-  comitatoDashboard.classList.add('hidden');
+  importMsg.textContent = data.message || 'Import completato';
+  importMsg.className = res.ok ? 'success' : 'error';
 }
 
 /* ======================
    EVENTI
 ====================== */
-loginBtn.addEventListener('click', login);
-createComitatoBtn.addEventListener('click', createComitato);
-resetBtn.addEventListener('click', resetPasswordFn);
-
-  async function loadMatches() {
-  const container = document.getElementById('matchesList');
-  container.textContent = 'Caricamento...';
-
-  try {
-    const res = await fetch(API_URL + '/matches');
-    const data = await res.json();
-
-    if (!data.length) {
-      container.innerHTML = '<p>Nessuna partita presente</p>';
-      return;
-    }
-
-    container.innerHTML = data.map(m => `
-      <div style="margin-bottom:10px">
-        <strong>${m.team_a} vs ${m.team_b}</strong><br>
-        📅 ${m.match_date} ⏰ ${m.match_time}<br>
-        📍 ${m.location}
-      </div>
-    `).join('');
-
-  } catch {
-    container.textContent = 'Errore caricamento partite';
-  }
-}
-
-async function createMatch() {
-  const msg = document.getElementById('matchMsg');
-  msg.textContent = '';
-
-  const body = {
-    team_a: document.getElementById('teamA').value,
-    team_b: document.getElementById('teamB').value,
-    match_date: document.getElementById('matchDate').value,
-    match_time: document.getElementById('matchTime').value,
-    location: document.getElementById('location').value
-  };
-
-  try {
-    const res = await fetch(API_URL + '/matches', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        role: currentUser.role
-      },
-      body: JSON.stringify(body)
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      msg.textContent = data.message || 'Errore';
-      msg.className = 'error';
-      return;
-    }
-
-    msg.textContent = '✅ Partita creata';
-    msg.className = 'success';
-
-    loadMatches();
-
-  } catch {
-    msg.textContent = 'Errore di connessione';
-    msg.className = 'error';
-  }
-}
-
+loginBtn.onclick = login;
+resetBtn.onclick = resetPasswordFn;
+createComitatoBtn.onclick = createComitato;
+importBtn.onclick = importMatches;
 </script>
 
 </body>
 </html>
+

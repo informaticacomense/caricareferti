@@ -310,6 +310,27 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
+// CREA STAGIONE
+app.post('/seasons', async (req, res) => {
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: 'Nome stagione obbligatorio' });
+  }
+
+  try {
+    const r = await pool.query(
+      'INSERT INTO seasons (name) VALUES ($1) RETURNING *',
+      [name]
+    );
+
+    res.status(201).json(r.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 /* =========================
    SERVER

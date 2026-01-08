@@ -10,12 +10,14 @@
       margin: 30px;
       background: #f4f6f8;
     }
-    h1, h2, h3 { margin-top: 20px; }
+    h1, h2, h3 {
+      margin-top: 20px;
+    }
     .box {
       background: #fff;
       padding: 20px;
       border-radius: 6px;
-      max-width: 520px;
+      max-width: 650px;
       margin-bottom: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
@@ -32,10 +34,21 @@
       cursor: pointer;
       border-radius: 4px;
     }
-    button:hover { background: #004999; }
-    .hidden { display: none; }
-    .success { color: green; }
-    .error { color: red; }
+    button:hover {
+      background: #004999;
+    }
+    .hidden {
+      display: none;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    hr {
+      margin: 30px 0;
+    }
   </style>
 </head>
 
@@ -43,91 +56,101 @@
 
 <h1>🏀 Gestione Referti Minibasket</h1>
 
-<!-- LOGIN -->
+<!-- ================= LOGIN ================= -->
 <div class="box" id="loginBox">
   <h2>🔐 Login</h2>
   <input type="email" id="loginEmail" placeholder="Email">
   <input type="password" id="loginPassword" placeholder="Password">
-  <button id="loginBtn">Login</button>
+  <button onclick="login()">Login</button>
   <p id="loginMsg"></p>
 </div>
 
-<!-- RESET PASSWORD -->
+<!-- ================= RESET PASSWORD ================= -->
 <div class="box">
   <h2>🔁 Password dimenticata</h2>
   <input type="email" id="resetEmail" placeholder="Email">
   <input type="password" id="resetPassword" placeholder="Nuova password">
-  <button id="resetBtn">Reimposta password</button>
+  <button onclick="resetPassword()">Reimposta password</button>
   <p id="resetMsg"></p>
 </div>
 
-<!-- UTENTE -->
+<!-- ================= UTENTE ================= -->
 <div class="box hidden" id="userBox">
   <h2>👤 Utente loggato</h2>
-  <p>Email: <strong><span id="userEmail"></span></strong></p>
-  <p>Ruolo: <strong><span id="userRole"></span></strong></p>
+  <p>Email: <strong id="userEmail"></strong></p>
+  <p>Ruolo: <strong id="userRole"></strong></p>
   <button onclick="logout()" style="background:#cc0000">🚪 Logout</button>
 </div>
 
-<!-- SUPERADMIN -->
+<!-- ================= SUPERADMIN ================= -->
 <div class="box hidden" id="superAdminBox">
   <h2>🏛️ Crea Comitato Provinciale</h2>
-  <input type="text" id="provincia" placeholder="Provincia">
-  <input type="email" id="comitatoEmail" placeholder="Email comitato">
-  <input type="password" id="comitatoPassword" placeholder="Password iniziale">
-  <button id="createComitatoBtn">Crea Comitato</button>
+  <input id="provincia" placeholder="Provincia">
+  <input id="comitatoEmail" placeholder="Email comitato">
+  <input id="comitatoPassword" placeholder="Password iniziale">
+  <button onclick="createComitato()">Crea comitato</button>
   <p id="comitatoMsg"></p>
 </div>
 
-<!-- DASHBOARD COMITATO -->
+<!-- ================= DASHBOARD COMITATO ================= -->
 <div class="box hidden" id="comitatoDashboard">
-  <h2>🏀 Dashboard Comitato</h2>
+  <h2>🏀 Dashboard Comitato Provinciale</h2>
 
-  <h3>➕ Crea Stagione Sportiva</h3>
-
-<input type="text" id="newSeasonName" placeholder="Es. 2025/2026">
-<button onclick="createSeason()">Crea stagione</button>
-
-<p id="seasonMsg"></p>
-<hr>
-
-
-  <label>Stagione sportiva</label>
-  <select id="seasonSelect"></select>
-
-  <label>Categoria</label>
-  <select id="categorySelect"></select>
-
-  <label>Fase</label>
-  <select id="phaseSelect"></select>
-
-  <label>Girone</label>
-  <select id="groupSelect"></select>
+  <!-- STAGIONE -->
+  <h3>➕ Stagione sportiva</h3>
+  <input id="newSeasonName" placeholder="Es. 2025/2026">
+  <button onclick="createSeason()">Crea stagione</button>
+  <p id="seasonMsg"></p>
 
   <hr>
 
+  <!-- CATEGORIA -->
+  <h3>➕ Categoria</h3>
+  <select id="seasonSelect"></select>
+  <input id="newCategoryName" placeholder="Es. Aquilotti">
+  <button onclick="createCategory()">Crea categoria</button>
+  <p id="categoryMsg"></p>
+
+  <hr>
+
+  <!-- FASE -->
+  <h3>➕ Fase</h3>
+  <select id="categorySelect"></select>
+  <input id="newPhaseName" placeholder="Es. Prima fase">
+  <button onclick="createPhase()">Crea fase</button>
+  <p id="phaseMsg"></p>
+
+  <hr>
+
+  <!-- GIRONE -->
+  <h3>➕ Girone</h3>
+  <select id="phaseSelect"></select>
+  <input id="newGroupName" placeholder="Es. Girone A">
+  <button onclick="createGroup()">Crea girone</button>
+  <p id="groupMsg"></p>
+
+  <hr>
+
+  <!-- IMPORT PARTITE -->
   <h3>📥 Importa partite da Excel</h3>
+  <select id="groupSelect"></select>
   <input type="file" id="excelFile" accept=".xlsx">
-  <button id="importBtn">Importa partite</button>
+  <button onclick="importMatches()">Importa partite</button>
   <p id="importMsg"></p>
 </div>
 
 <script>
-/* ======================
-   CONFIG
-====================== */
+/* ================= CONFIG ================= */
 const API_URL = 'https://caricareferti.onrender.com';
 let currentUser = null;
 
-/* ======================
-   LOGIN
-====================== */
+/* ================= LOGIN ================= */
 async function login() {
   loginMsg.textContent = '';
 
   const res = await fetch(API_URL + '/login', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: loginEmail.value,
       password: loginPassword.value
@@ -146,7 +169,6 @@ async function login() {
 
   loginBox.classList.add('hidden');
   userBox.classList.remove('hidden');
-
   userEmail.textContent = data.email;
   userRole.textContent = data.role;
 
@@ -160,9 +182,7 @@ async function login() {
   }
 }
 
-/* ======================
-   LOGOUT
-====================== */
+/* ================= LOGOUT ================= */
 function logout() {
   currentUser = null;
   loginBox.classList.remove('hidden');
@@ -171,13 +191,11 @@ function logout() {
   comitatoDashboard.classList.add('hidden');
 }
 
-/* ======================
-   RESET PASSWORD
-====================== */
-async function resetPasswordFn() {
+/* ================= RESET PASSWORD ================= */
+async function resetPassword() {
   const res = await fetch(API_URL + '/reset-password', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: resetEmail.value,
       newPassword: resetPassword.value
@@ -189,9 +207,7 @@ async function resetPasswordFn() {
   resetMsg.className = res.ok ? 'success' : 'error';
 }
 
-/* ======================
-   CREA COMITATO
-====================== */
+/* ================= SUPERADMIN ================= */
 async function createComitato() {
   const res = await fetch(API_URL + '/admin/create-comitato', {
     method: 'POST',
@@ -211,48 +227,116 @@ async function createComitato() {
   comitatoMsg.className = res.ok ? 'success' : 'error';
 }
 
-/* ======================
-   SELECT A CASCATA
-====================== */
+/* ================= STAGIONI ================= */
 async function loadSeasons() {
   const res = await fetch(API_URL + '/seasons');
   const data = await res.json();
-  seasonSelect.innerHTML = '<option value="">Seleziona</option>';
-  data.forEach(s => seasonSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+  seasonSelect.innerHTML = '<option value="">Seleziona stagione</option>';
+  data.forEach(s => {
+    seasonSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+  });
 }
 
+async function createSeason() {
+  const res = await fetch(API_URL + '/seasons', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newSeasonName.value })
+  });
+
+  const data = await res.json();
+  seasonMsg.textContent = data.message || 'Stagione creata';
+  seasonMsg.className = res.ok ? 'success' : 'error';
+  loadSeasons();
+}
+
+/* ================= CATEGORIE ================= */
 seasonSelect.addEventListener('change', async () => {
   categorySelect.innerHTML = '';
   phaseSelect.innerHTML = '';
   groupSelect.innerHTML = '';
+
   const res = await fetch(`${API_URL}/categories?seasonId=${seasonSelect.value}`);
   const data = await res.json();
-  categorySelect.innerHTML = '<option value="">Seleziona</option>';
-  data.forEach(c => categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+
+  categorySelect.innerHTML = '<option value="">Seleziona categoria</option>';
+  data.forEach(c => {
+    categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+  });
 });
 
+async function createCategory() {
+  const res = await fetch(API_URL + '/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      season_id: seasonSelect.value,
+      name: newCategoryName.value
+    })
+  });
+
+  const data = await res.json();
+  categoryMsg.textContent = data.message || 'Categoria creata';
+  categoryMsg.className = res.ok ? 'success' : 'error';
+}
+
+/* ================= FASI ================= */
 categorySelect.addEventListener('change', async () => {
   phaseSelect.innerHTML = '';
   groupSelect.innerHTML = '';
+
   const res = await fetch(`${API_URL}/phases?categoryId=${categorySelect.value}`);
   const data = await res.json();
-  phaseSelect.innerHTML = '<option value="">Seleziona</option>';
-  data.forEach(p => phaseSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+
+  phaseSelect.innerHTML = '<option value="">Seleziona fase</option>';
+  data.forEach(p => {
+    phaseSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+  });
 });
 
+async function createPhase() {
+  const res = await fetch(API_URL + '/phases', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      category_id: categorySelect.value,
+      name: newPhaseName.value
+    })
+  });
+
+  const data = await res.json();
+  phaseMsg.textContent = data.message || 'Fase creata';
+  phaseMsg.className = res.ok ? 'success' : 'error';
+}
+
+/* ================= GIRONI ================= */
 phaseSelect.addEventListener('change', async () => {
   const res = await fetch(`${API_URL}/groups?phaseId=${phaseSelect.value}`);
   const data = await res.json();
-  groupSelect.innerHTML = '<option value="">Seleziona</option>';
-  data.forEach(g => groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`);
+
+  groupSelect.innerHTML = '<option value="">Seleziona girone</option>';
+  data.forEach(g => {
+    groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+  });
 });
 
-/* ======================
-   IMPORT EXCEL
-====================== */
-async function importMatches() {
-  importMsg.textContent = '';
+async function createGroup() {
+  const res = await fetch(API_URL + '/groups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      phase_id: phaseSelect.value,
+      name: newGroupName.value
+    })
+  });
 
+  const data = await res.json();
+  groupMsg.textContent = data.message || 'Girone creato';
+  groupMsg.className = res.ok ? 'success' : 'error';
+}
+
+/* ================= IMPORT PARTITE ================= */
+async function importMatches() {
   if (!groupSelect.value || !excelFile.files.length) {
     importMsg.textContent = 'Seleziona girone e file Excel';
     importMsg.className = 'error';
@@ -271,49 +355,7 @@ async function importMatches() {
   importMsg.textContent = data.message || 'Import completato';
   importMsg.className = res.ok ? 'success' : 'error';
 }
-
-/* ======================
-   EVENTI
-====================== */
-loginBtn.onclick = login;
-resetBtn.onclick = resetPasswordFn;
-createComitatoBtn.onclick = createComitato;
-importBtn.onclick = importMatches;
-
-  async function createSeason() {
-  const msg = document.getElementById('seasonMsg');
-  msg.textContent = '';
-
-  const name = document.getElementById('newSeasonName').value.trim();
-  if (!name) {
-    msg.textContent = 'Inserisci il nome della stagione';
-    msg.className = 'error';
-    return;
-  }
-
-  const res = await fetch(API_URL + '/seasons', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    msg.textContent = data.message;
-    msg.className = 'error';
-    return;
-  }
-
-  msg.textContent = '✅ Stagione creata';
-  msg.className = 'success';
-  document.getElementById('newSeasonName').value = '';
-
-  loadSeasons(); // ricarica il select
-}
-
 </script>
 
 </body>
 </html>
-

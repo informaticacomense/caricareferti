@@ -331,6 +331,31 @@ app.post('/seasons', async (req, res) => {
   }
 });
 
+// CREA CATEGORIA
+app.post('/categories', async (req, res) => {
+  const { season_id, name } = req.body;
+
+  if (!season_id || !name) {
+    return res.status(400).json({ message: 'season_id e name obbligatori' });
+  }
+
+  try {
+    const r = await pool.query(
+      `
+      INSERT INTO categories (season_id, name)
+      VALUES ($1, $2)
+      RETURNING *
+      `,
+      [season_id, name]
+    );
+
+    res.status(201).json(r.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});
+
 
 /* =========================
    SERVER

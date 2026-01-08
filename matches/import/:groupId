@@ -1,0 +1,76 @@
+app.post(
+  '/matches/import/:groupId',
+  upload.single('file'),
+  async (req, res) => {
+
+    const { groupId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'File Excel mancante' });
+    }
+
+    try {
+      // verifica girone
+      const g = await pool.query(
+        'SELECT id FROM groups WHERE id = $1',
+        [groupId]
+      );
+
+      if (g.rows.length === 0) {
+        return res.status(404).json({ message: 'Girone non trovato' });
+      }
+
+      // leggi Excel
+      const workbook = xlsx.readFile(req.file.path);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = xlsx.utils.sheet_to_json(sheet);
+
+      let imported = 0;
+
+      for (const r of rows) {
+        if (!r.team_a || !r.team_b || !r.numero_gara) continue;
+
+        await pool.query(
+          `
+          INSERT INTO matches (
+            group_id,
+            numero_gara,
+            team_a,
+            team_b,
+            match_date,
+            match_time,
+            location,
+            result_a,
+            result_b,
+            stato
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          `,
+          [
+            groupId,
+            r.numero_gara,
+            r.team_a,
+            r.team_b,
+            r.match_date,
+            r.match_time,
+            r.location,
+            r.result_a ?? null,
+            r.result_b ?? null,
+            r.stato ?? 'DA_GIOCARE'
+          ]
+        );
+
+        imported++;
+      }
+
+      res.json({
+        message: 'Import completato',
+        partite_importate: imported
+      });
+
+    } catch (err) {
+      console.error('IMPORT EXCEL ERROR:', err);
+      res.status(500).json({ message: 'Errore server' });
+    }
+  }
+);

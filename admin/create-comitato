@@ -1,1 +1,44 @@
 
+app.post('/admin/create-comitato', requireSuperAdmin, async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Dati mancanti' });
+  }
+
+  try {
+    // 1️⃣ crea committee
+    const committeeResult = await pool.query(
+      `
+      INSERT INTO committees (name, email)
+      VALUES ($1, $2)
+      RETURNING id, name, email
+      `,
+      [name, email]
+    );
+
+    const committee = committeeResult.rows[0];
+
+    // 2️⃣ crea utente comitato
+    const hash = await bcrypt.hash(password, 10);
+
+    const userResult = await pool.query(
+      `
+      INSERT INTO users (email, password_hash, role, committee_id)
+      VALUES ($1, $2, 'comitato', $3)
+      RETURNING id, email, role
+      `,
+      [email, hash, committee.id]
+    );
+
+    res.status(201).json({
+      message: 'Comitato creato correttamente',
+      committee,
+      user: userResult.rows[0]
+    });
+
+  } catch (err) {
+    console.error('ERRORE CREA COMITATO:', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
+});

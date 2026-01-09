@@ -15,7 +15,7 @@
       background: #fff;
       padding: 20px;
       border-radius: 6px;
-      max-width: 700px;
+      max-width: 750px;
       margin-bottom: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
@@ -44,77 +44,79 @@
 
 <h1>🏀 Gestione Referti Minibasket</h1>
 
-<!-- LOGIN -->
+<!-- ================= LOGIN ================= -->
 <div class="box" id="loginBox">
   <h2>🔐 Login</h2>
   <input type="email" id="loginEmail" placeholder="Email">
   <input type="password" id="loginPassword" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <button id="loginBtn">Login</button>
   <p id="loginMsg"></p>
 </div>
 
-<!-- RESET PASSWORD -->
+<!-- ================= RESET PASSWORD ================= -->
 <div class="box">
   <h2>🔁 Password dimenticata</h2>
   <input type="email" id="resetEmail" placeholder="Email">
-  <input type="password" id="resetPassword" placeholder="Nuova password">
-  <button onclick="resetPassword()">Reimposta password</button>
+  <input type="password" id="resetNewPassword" placeholder="Nuova password">
+  <button id="resetBtn">Reimposta password</button>
   <p id="resetMsg"></p>
 </div>
 
-<!-- UTENTE -->
+<!-- ================= UTENTE ================= -->
 <div class="box hidden" id="userBox">
   <h2>👤 Utente loggato</h2>
   <p>Email: <strong id="userEmail"></strong></p>
   <p>Ruolo: <strong id="userRole"></strong></p>
-  <button onclick="logout()" style="background:#cc0000">🚪 Logout</button>
+  <button id="logoutBtn" style="background:#cc0000">🚪 Logout</button>
 </div>
 
-<!-- SUPERADMIN -->
+<!-- ================= SUPERADMIN ================= -->
 <div class="box hidden" id="superAdminBox">
   <h2>🏛️ Crea Comitato Provinciale</h2>
-  <input id="provincia" placeholder="Provincia">
-  <input id="comitatoEmail" placeholder="Email comitato">
-  <input id="comitatoPassword" placeholder="Password iniziale">
-  <button onclick="createComitato()">Crea comitato</button>
-  <p id="comitatoMsg"></p>
+
+  <input id="committeeName" placeholder="Nome Comitato (es. Milano)">
+  <input id="committeeEmail" placeholder="Email comitato">
+  <input id="committeePassword" placeholder="Password iniziale">
+
+  <button id="createCommitteeBtn">Crea comitato</button>
+  <p id="committeeMsg"></p>
 </div>
 
-<!-- DASHBOARD COMITATO -->
-<div class="box hidden" id="comitatoDashboard">
+<!-- ================= DASHBOARD COMITATO ================= -->
+<div class="box hidden" id="committeeDashboard">
   <h2>🏀 Dashboard Comitato Provinciale</h2>
 
-  <!-- STAGIONE -->
+  <!-- STAGIONI -->
   <h3>➕ Stagione sportiva</h3>
   <input id="newSeasonName" placeholder="Es. 2025/2026">
-  <button onclick="createSeason()">Crea stagione</button>
+  <button id="createSeasonBtn">Crea stagione</button>
   <p id="seasonMsg"></p>
 
   <hr>
 
-  <!-- CATEGORIA -->
+  <!-- CATEGORIE -->
   <h3>➕ Categoria</h3>
   <select id="seasonSelect"></select>
   <input id="newCategoryName" placeholder="Es. Aquilotti">
-  <button onclick="createCategory()">Crea categoria</button>
+  <button id="createCategoryBtn">Crea categoria</button>
   <p id="categoryMsg"></p>
 
   <hr>
 
-  <!-- FASE -->
+  <!-- FASI -->
   <h3>➕ Fase</h3>
   <select id="categorySelect"></select>
   <input id="newPhaseName" placeholder="Es. Prima fase">
-  <button onclick="createPhase()">Crea fase</button>
+  <button id="createPhaseBtn">Crea fase</button>
   <p id="phaseMsg"></p>
 
   <hr>
 
-  <!-- GIRONE -->
+  <!-- GIRONI -->
   <h3>➕ Girone</h3>
   <select id="phaseSelect"></select>
   <input id="newGroupName" placeholder="Es. Girone A">
-  <button onclick="createGroup()">Crea girone</button>
+  <button id="createGroupBtn">Crea girone</button>
   <p id="groupMsg"></p>
 
   <hr>
@@ -123,7 +125,7 @@
   <h3>📥 Importa partite da Excel</h3>
   <select id="groupSelect"></select>
   <input type="file" id="excelFile" accept=".xlsx">
-  <button onclick="importMatches()">Importa partite</button>
+  <button id="importMatchesBtn">Importa partite</button>
   <p id="importMsg"></p>
 </div>
 
@@ -131,118 +133,123 @@
 const API_URL = 'https://caricareferti.onrender.com';
 let currentUser = null;
 
-/* LOGIN */
+/* ================= LOGIN ================= */
 async function login() {
   loginMsg.textContent = '';
-  const res = await fetch(API_URL + '/login', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      email: loginEmail.value,
-      password: loginPassword.value
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    loginMsg.textContent = data.message;
-    loginMsg.className = 'error';
-    return;
-  }
-  currentUser = data;
-  loginBox.classList.add('hidden');
-  userBox.classList.remove('hidden');
-  userEmail.textContent = data.email;
-  userRole.textContent = data.role;
-  if (data.role === 'superadmin') superAdminBox.classList.remove('hidden');
-  if (data.role === 'comitato') {
-    comitatoDashboard.classList.remove('hidden');
-    loadSeasons();
-  }
-}
-
-/* LOGOUT */
-function logout() {
-  currentUser = null;
-  loginBox.classList.remove('hidden');
-  userBox.classList.add('hidden');
-  superAdminBox.classList.add('hidden');
-  comitatoDashboard.classList.add('hidden');
-}
-
-/* RESET PASSWORD */
-async function resetPassword() {
-  const res = await fetch(API_URL + '/reset-password', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      email: resetEmail.value,
-      newPassword: resetPassword.value
-    })
-  });
-  const data = await res.json();
-  resetMsg.textContent = data.message;
-  resetMsg.className = res.ok ? 'success' : 'error';
-}
-
-/* SUPERADMIN */
-<script>
-async function createComitato() {
-  comitatoMsg.textContent = '';
-  comitatoMsg.className = '';
-
-  const name = document.getElementById('provincia').value.trim();
-  const email = document.getElementById('comitatoEmail').value.trim();
-  const password = document.getElementById('comitatoPassword').value.trim();
-
-  if (!name || !email || !password) {
-    comitatoMsg.textContent = 'Tutti i campi sono obbligatori';
-    comitatoMsg.className = 'error';
-    return;
-  }
+  loginMsg.className = '';
 
   try {
-    const res = await fetch(API_URL + '/admin/create-comitato', {
+    const res = await fetch(API_URL + '/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        role: currentUser.role   // superadmin
-      },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        name,
-        email,
-        password
+        email: loginEmail.value.trim(),
+        password: loginPassword.value.trim()
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      comitatoMsg.textContent = data.message || 'Errore';
-      comitatoMsg.className = 'error';
+      loginMsg.textContent = data.message || 'Login fallito';
+      loginMsg.className = 'error';
       return;
     }
 
-    comitatoMsg.textContent = '✅ Comitato creato correttamente';
-    comitatoMsg.className = 'success';
+    currentUser = data;
 
-    // reset campi
-    provincia.value = '';
-    comitatoEmail.value = '';
-    comitatoPassword.value = '';
+    loginBox.classList.add('hidden');
+    userBox.classList.remove('hidden');
+    userEmail.textContent = data.email;
+    userRole.textContent = data.role;
+
+    if (data.role === 'superadmin') {
+      superAdminBox.classList.remove('hidden');
+    }
+
+    if (data.role === 'comitato') {
+      committeeDashboard.classList.remove('hidden');
+      loadSeasons();
+    }
 
   } catch (err) {
-    comitatoMsg.textContent = 'Errore di connessione al server';
-    comitatoMsg.className = 'error';
+    loginMsg.textContent = 'Errore di connessione al server';
+    loginMsg.className = 'error';
   }
 }
 
+/* ================= LOGOUT ================= */
+function logout() {
+  currentUser = null;
+  loginBox.classList.remove('hidden');
+  userBox.classList.add('hidden');
+  superAdminBox.classList.add('hidden');
+  committeeDashboard.classList.add('hidden');
+}
 
-/* STAGIONI */
+/* ================= RESET PASSWORD ================= */
+async function resetPasswordFn() {
+  resetMsg.textContent = '';
+  resetMsg.className = '';
+
+  try {
+    const res = await fetch(API_URL + '/reset-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        email: resetEmail.value.trim(),
+        newPassword: resetNewPassword.value.trim()
+      })
+    });
+
+    const data = await res.json();
+    resetMsg.textContent = data.message;
+    resetMsg.className = res.ok ? 'success' : 'error';
+
+  } catch {
+    resetMsg.textContent = 'Errore di connessione';
+    resetMsg.className = 'error';
+  }
+}
+
+/* ================= SUPERADMIN ================= */
+async function createCommittee() {
+  committeeMsg.textContent = '';
+  committeeMsg.className = '';
+
+  try {
+    const res = await fetch(API_URL + '/admin/create-comitato', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        role: currentUser.role
+      },
+      body: JSON.stringify({
+        name: committeeName.value.trim(),
+        email: committeeEmail.value.trim(),
+        password: committeePassword.value.trim()
+      })
+    });
+
+    const data = await res.json();
+    committeeMsg.textContent = data.message;
+    committeeMsg.className = res.ok ? 'success' : 'error';
+
+  } catch {
+    committeeMsg.textContent = 'Errore di connessione';
+    committeeMsg.className = 'error';
+  }
+}
+
+/* ================= STAGIONI ================= */
 async function loadSeasons() {
   const res = await fetch(API_URL + '/seasons');
   const data = await res.json();
+
   seasonSelect.innerHTML = '<option value="">Seleziona stagione</option>';
-  data.forEach(s => seasonSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+  data.forEach(s => {
+    seasonSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+  });
 }
 
 async function createSeason() {
@@ -250,114 +257,24 @@ async function createSeason() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'role': currentUser.role
+      role: currentUser.role
     },
-    body: JSON.stringify({ name: newSeasonName.value })
+    body: JSON.stringify({ name: newSeasonName.value.trim() })
   });
+
   const data = await res.json();
   seasonMsg.textContent = data.message;
   seasonMsg.className = res.ok ? 'success' : 'error';
   loadSeasons();
 }
 
-/* CATEGORIE */
-seasonSelect.onchange = async () => {
-  const res = await fetch(`${API_URL}/categories?seasonId=${seasonSelect.value}`);
-  const data = await res.json();
-  categorySelect.innerHTML = '<option value="">Seleziona categoria</option>';
-  data.forEach(c => categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
-};
-
-async function createCategory() {
-  const res = await fetch(API_URL + '/categories', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'role': currentUser.role
-    },
-    body: JSON.stringify({
-      season_id: seasonSelect.value,
-      name: newCategoryName.value
-    })
-  });
-  const data = await res.json();
-  categoryMsg.textContent = data.message;
-  categoryMsg.className = res.ok ? 'success' : 'error';
-}
-
-/* FASI */
-categorySelect.onchange = async () => {
-  const res = await fetch(`${API_URL}/phases?categoryId=${categorySelect.value}`);
-  const data = await res.json();
-  phaseSelect.innerHTML = '<option value="">Seleziona fase</option>';
-  data.forEach(p => phaseSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-};
-
-async function createPhase() {
-  const res = await fetch(API_URL + '/phases', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'role': currentUser.role
-    },
-    body: JSON.stringify({
-      category_id: categorySelect.value,
-      name: newPhaseName.value
-    })
-  });
-  const data = await res.json();
-  phaseMsg.textContent = data.message;
-  phaseMsg.className = res.ok ? 'success' : 'error';
-}
-
-/* GIRONI */
-phaseSelect.onchange = async () => {
-  const res = await fetch(`${API_URL}/groups?phaseId=${phaseSelect.value}`);
-  const data = await res.json();
-  groupSelect.innerHTML = '<option value="">Seleziona girone</option>';
-  data.forEach(g => groupSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`);
-};
-
-async function createGroup() {
-  const res = await fetch(API_URL + '/groups', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'role': currentUser.role
-    },
-    body: JSON.stringify({
-      phase_id: phaseSelect.value,
-      name: newGroupName.value
-    })
-  });
-  const data = await res.json();
-  groupMsg.textContent = data.message;
-  groupMsg.className = res.ok ? 'success' : 'error';
-}
-
-/* IMPORT PARTITE */
-async function importMatches() {
-  if (!groupSelect.value || !excelFile.files.length) {
-    importMsg.textContent = 'Seleziona girone e file Excel';
-    importMsg.className = 'error';
-    return;
-  }
-  const fd = new FormData();
-  fd.append('file', excelFile.files[0]);
-
-  const res = await fetch(`${API_URL}/matches/import/${groupSelect.value}`, {
-    method: 'POST',
-    headers: {
-      'role': currentUser.role
-    },
-    body: fd
-  });
-  const data = await res.json();
-  importMsg.textContent = data.message;
-  importMsg.className = res.ok ? 'success' : 'error';
-}
+/* ================= EVENTI ================= */
+loginBtn.onclick = login;
+logoutBtn.onclick = logout;
+resetBtn.onclick = resetPasswordFn;
+createCommitteeBtn.onclick = createCommittee;
+createSeasonBtn.onclick = createSeason;
 </script>
 
 </body>
 </html>
-

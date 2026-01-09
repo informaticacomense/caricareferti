@@ -129,16 +129,27 @@ app.post('/admin/create-comitato', requireSuperAdmin, async (req, res) => {
    SEASONS (STAGIONI)
 ========================= */
 
-// CREA STAGIONE (solo comitato)
+/* =========================
+   SEASONS (STAGIONI)
+========================= */
+
+/**
+ * CREA STAGIONE
+ * Accesso consentito SOLO al comitato provinciale
+ */
 app.post('/seasons', async (req, res) => {
   if (req.headers.role !== 'comitato') {
-    return res.status(403).json({ message: 'Solo comitato provinciale' });
+    return res.status(403).json({
+      message: 'Solo comitato provinciale'
+    });
   }
 
   const { name } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ message: 'Nome stagione obbligatorio' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({
+      message: 'Nome stagione obbligatorio'
+    });
   }
 
   try {
@@ -146,9 +157,9 @@ app.post('/seasons', async (req, res) => {
       `
       INSERT INTO seasons (name)
       VALUES ($1)
-      RETURNING *
+      RETURNING id, name
       `,
-      [name]
+      [name.trim()]
     );
 
     res.status(201).json({
@@ -157,23 +168,37 @@ app.post('/seasons', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('ERRORE CREA STAGIONE:', err);
-    res.status(500).json({ message: 'Errore server' });
+    console.error('ERRORE CREA STAGIONE:', err.message);
+    res.status(500).json({
+      message: 'Errore server'
+    });
   }
 });
 
-// LISTA STAGIONI (per select frontend)
+/**
+ * LISTA STAGIONI
+ * Usata dal frontend per popolare il select
+ */
 app.get('/seasons', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name FROM seasons ORDER BY id DESC'
+      `
+      SELECT id, name
+      FROM seasons
+      ORDER BY id DESC
+      `
     );
+
     res.json(result.rows);
+
   } catch (err) {
-    console.error('ERRORE GET SEASONS:', err);
-    res.status(500).json({ message: 'Errore server' });
+    console.error('ERRORE GET SEASONS:', err.message);
+    res.status(500).json({
+      message: 'Errore server'
+    });
   }
 });
+
 
 /* =========================
    CATEGORIE

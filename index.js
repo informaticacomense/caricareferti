@@ -125,17 +125,54 @@ app.post('/admin/create-comitato', requireSuperAdmin, async (req, res) => {
 /* =========================
    STAGIONI
 ========================= */
-app.get('/seasons', async (_, res) => {
-  const r = await pool.query('SELECT * FROM seasons ORDER BY name DESC');
-  res.json(r.rows);
+/* =========================
+   SEASONS (STAGIONI)
+========================= */
+
+// CREA STAGIONE (solo comitato)
+app.post('/seasons', async (req, res) => {
+  if (req.headers.role !== 'comitato') {
+    return res.status(403).json({ message: 'Solo comitato provinciale' });
+  }
+
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: 'Nome stagione obbligatorio' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO seasons (name)
+      VALUES ($1)
+      RETURNING *
+      `,
+      [name]
+    );
+
+    res.status(201).json({
+      message: 'Stagione creata',
+      season: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error('ERRORE CREA STAGIONE:', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
 });
 
-app.post('/seasons', async (req, res) => {
-  const r = await pool.query(
-    'INSERT INTO seasons (name) VALUES ($1) RETURNING *',
-    [req.body.name]
-  );
-  res.status(201).json(r.rows[0]);
+// LISTA STAGIONI (per select frontend)
+app.get('/seasons', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name FROM seasons ORDER BY id DESC'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('ERRORE GET SEASONS:', err);
+    res.status(500).json({ message: 'Errore server' });
+  }
 });
 
 /* =========================

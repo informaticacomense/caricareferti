@@ -193,10 +193,11 @@ async function createComitato() {
       'role': currentUser.role
     },
     body: JSON.stringify({
-      email: comitatoEmail.value,
-      password: comitatoPassword.value,
-      province: provincia.value
-    })
+  name: provincia.value,   // usiamo "provincia" come nome comitato
+  email: comitatoEmail.value,
+  password: comitatoPassword.value
+})
+
   });
   const data = await res.json();
   comitatoMsg.textContent = data.message;

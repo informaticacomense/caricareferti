@@ -213,33 +213,56 @@ async function resetPasswordFn() {
 }
 
 /* ================= SUPERADMIN ================= */
-async function createCommittee() {
-  committeeMsg.textContent = '';
-  committeeMsg.className = '';
+async function createComitato() {
+  comitatoMsg.textContent = '';
+  comitatoMsg.className = '';
+
+  const province = document.getElementById('provincia').value.trim();
+  const email = document.getElementById('comitatoEmail').value.trim();
+  const password = document.getElementById('comitatoPassword').value.trim();
+
+  if (!province || !email || !password) {
+    comitatoMsg.textContent = 'Tutti i campi sono obbligatori';
+    comitatoMsg.className = 'error';
+    return;
+  }
 
   try {
     const res = await fetch(API_URL + '/admin/create-comitato', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        role: currentUser.role
+        role: currentUser.role   // superadmin
       },
       body: JSON.stringify({
-        name: committeeName.value.trim(),
-        email: committeeEmail.value.trim(),
-        password: committeePassword.value.trim()
+        province,   // ✅ QUESTO ERA IL PROBLEMA
+        email,
+        password
       })
     });
 
     const data = await res.json();
-    committeeMsg.textContent = data.message;
-    committeeMsg.className = res.ok ? 'success' : 'error';
 
-  } catch {
-    committeeMsg.textContent = 'Errore di connessione';
-    committeeMsg.className = 'error';
+    if (!res.ok) {
+      comitatoMsg.textContent = data.message || 'Errore';
+      comitatoMsg.className = 'error';
+      return;
+    }
+
+    comitatoMsg.textContent = '✅ Comitato creato correttamente';
+    comitatoMsg.className = 'success';
+
+    // reset campi
+    provincia.value = '';
+    comitatoEmail.value = '';
+    comitatoPassword.value = '';
+
+  } catch (err) {
+    comitatoMsg.textContent = 'Errore di connessione al server';
+    comitatoMsg.className = 'error';
   }
 }
+
 
 /* ================= STAGIONI ================= */
 async function loadSeasons() {

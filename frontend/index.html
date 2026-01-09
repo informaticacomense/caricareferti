@@ -185,24 +185,58 @@ async function resetPassword() {
 }
 
 /* SUPERADMIN */
+<script>
 async function createComitato() {
-  const res = await fetch(API_URL + '/admin/create-comitato', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'role': currentUser.role
-    },
-    body: JSON.stringify({
-  name: provincia.value,   // usiamo "provincia" come nome comitato
-  email: comitatoEmail.value,
-  password: comitatoPassword.value
-})
+  comitatoMsg.textContent = '';
+  comitatoMsg.className = '';
 
-  });
-  const data = await res.json();
-  comitatoMsg.textContent = data.message;
-  comitatoMsg.className = res.ok ? 'success' : 'error';
+  const name = document.getElementById('provincia').value.trim();
+  const email = document.getElementById('comitatoEmail').value.trim();
+  const password = document.getElementById('comitatoPassword').value.trim();
+
+  if (!name || !email || !password) {
+    comitatoMsg.textContent = 'Tutti i campi sono obbligatori';
+    comitatoMsg.className = 'error';
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL + '/admin/create-comitato', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        role: currentUser.role   // superadmin
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      comitatoMsg.textContent = data.message || 'Errore';
+      comitatoMsg.className = 'error';
+      return;
+    }
+
+    comitatoMsg.textContent = '✅ Comitato creato correttamente';
+    comitatoMsg.className = 'success';
+
+    // reset campi
+    provincia.value = '';
+    comitatoEmail.value = '';
+    comitatoPassword.value = '';
+
+  } catch (err) {
+    comitatoMsg.textContent = 'Errore di connessione al server';
+    comitatoMsg.className = 'error';
+  }
 }
+</script>
+
 
 /* STAGIONI */
 async function loadSeasons() {

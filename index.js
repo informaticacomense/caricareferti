@@ -49,13 +49,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =========================
-   UTILS
+   AUTH UTILS
 ========================= */
-function requireSuperAdmin(req, res, next) {
-  if (req.headers.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Solo superadmin' });
-  }
-  next();
+function requireRole(role) {
+  return (req, res, next) => {
+    if (req.headers.role !== role) {
+      return res.status(403).json({ message: `Solo ${role}` });
+    }
+    next();
+  };
 }
 
 /* =========================
@@ -64,7 +66,7 @@ function requireSuperAdmin(req, res, next) {
 app.get('/', (req, res) => res.send('Backend attivo'));
 
 app.get('/health', async (req, res) => {
-  const r = await pool.query('select now()');
+  const r = await pool.query('SELECT now()');
   res.json({ status: 'ok', db_time: r.rows[0].now });
 });
 
@@ -73,6 +75,10 @@ app.get('/health', async (req, res) => {
 ========================= */
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email e password obbligatorie' });
+  }
 
   const r = await pool.query(
     'SELECT id, email, password_hash, role FROM users WHERE email=$1',
@@ -90,115 +96,91 @@ app.post('/login', async (req, res) => {
     return res.status(401).json({ message: 'Credenziali non valide' });
   }
 
-  res.json({ id: user.id, email: user.email, role: user.role });
+  res.json({
+    id: user.id,
+    email: user.email,
+    role: user.role
+  });
 });
 
+/* =========================
+   RESET PASSWORD
+========================= */
 app.post('/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;
-  const hash = await bcrypt.hash(newPassword, 10);
+
+  if (!email || !newPassword || !newPassword.trim()) {
+    return res.status(400).json({ message: 'Password non valida' });
+  }
+
+  const hash = await bcrypt.hash(newPassword.trim(), 10);
+
   await pool.query(
     'UPDATE users SET password_hash=$1 WHERE email=$2',
     [hash, email]
   );
+
   res.json({ message: 'Password aggiornata' });
 });
 
 /* =========================
    SUPERADMIN
 ========================= */
-app.post('/admin/create-comitato', requireSuperAdmin, async (req, res) => {
-  const { email, password, province } = req.body;
-  const hash = await bcrypt.hash(password, 10);
+app.post(
+  '/admin/create-comitato',
+  requireRole('superadmin'),
+  async (req, res) => {
+    const { email, password, province } = req.body;
 
-  const r = await pool.query(
-    `
-    INSERT INTO users (email, password_hash, role, province)
-    VALUES ($1,$2,'comitato',$3)
-    RETURNING id,email,role,province
-    `,
-    [email, hash, province]
-  );
+    if (!email || !password || !province) {
+      return res.status(400).json({ message: 'Campi mancanti' });
+    }
 
-  res.status(201).json({ message: 'Comitato creato', comitato: r.rows[0] });
-});
+    const hash = await bcrypt.hash(password.trim(), 10);
 
-/* =========================
-   STAGIONI
-========================= */
-/* =========================
-   SEASONS (STAGIONI)
-========================= */
-
-/* =========================
-   SEASONS (STAGIONI)
-========================= */
-
-/**
- * CREA STAGIONE
- * Accesso consentito SOLO al comitato provinciale
- */
-app.post('/seasons', async (req, res) => {
-  if (req.headers.role !== 'comitato') {
-    return res.status(403).json({
-      message: 'Solo comitato provinciale'
-    });
-  }
-
-  const { name } = req.body;
-
-  if (!name || !name.trim()) {
-    return res.status(400).json({
-      message: 'Nome stagione obbligatorio'
-    });
-  }
-
-  try {
-    const result = await pool.query(
+    const r = await pool.query(
       `
-      INSERT INTO seasons (name)
-      VALUES ($1)
-      RETURNING id, name
+      INSERT INTO users (email, password_hash, role, province)
+      VALUES ($1,$2,'comitato',$3)
+      RETURNING id,email,role,province
       `,
-      [name.trim()]
+      [email, hash, province]
     );
 
     res.status(201).json({
-      message: 'Stagione creata',
-      season: result.rows[0]
-    });
-
-  } catch (err) {
-    console.error('ERRORE CREA STAGIONE:', err.message);
-    res.status(500).json({
-      message: 'Errore server'
+      message: 'Comitato creato',
+      comitato: r.rows[0]
     });
   }
+);
+
+/* =========================
+   SEASONS (STAGIONI)
+========================= */
+app.post('/seasons', requireRole('comitato'), async (req, res) => {
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ message: 'Nome stagione obbligatorio' });
+  }
+
+  const r = await pool.query(
+    'INSERT INTO seasons (name) VALUES ($1) RETURNING *',
+    [name.trim()]
+  );
+
+  res.status(201).json({
+    message: 'Stagione creata',
+    season: r.rows[0]
+  });
 });
 
-/**
- * LISTA STAGIONI
- * Usata dal frontend per popolare il select
- */
 app.get('/seasons', async (req, res) => {
-  try {
-    const result = await pool.query(
-      `
-      SELECT id, name
-      FROM seasons
-      ORDER BY id DESC
-      `
-    );
-
-    res.json(result.rows);
-
-  } catch (err) {
-    console.error('ERRORE GET SEASONS:', err.message);
-    res.status(500).json({
-      message: 'Errore server'
-    });
-  }
+  const r = await pool.query(
+    'SELECT id, name FROM seasons ORDER BY id DESC'
+  );
+  res.json(r.rows);
 });
-
 
 /* =========================
    CATEGORIE
@@ -211,11 +193,14 @@ app.get('/categories', async (req, res) => {
   res.json(r.rows);
 });
 
-app.post('/categories', async (req, res) => {
+app.post('/categories', requireRole('comitato'), async (req, res) => {
+  const { season_id, name } = req.body;
+
   const r = await pool.query(
     'INSERT INTO categories (season_id,name) VALUES ($1,$2) RETURNING *',
-    [req.body.season_id, req.body.name]
+    [season_id, name]
   );
+
   res.status(201).json(r.rows[0]);
 });
 
@@ -230,11 +215,14 @@ app.get('/phases', async (req, res) => {
   res.json(r.rows);
 });
 
-app.post('/phases', async (req, res) => {
+app.post('/phases', requireRole('comitato'), async (req, res) => {
+  const { category_id, name } = req.body;
+
   const r = await pool.query(
     'INSERT INTO phases (category_id,name) VALUES ($1,$2) RETURNING *',
-    [req.body.category_id, req.body.name]
+    [category_id, name]
   );
+
   res.status(201).json(r.rows[0]);
 });
 
@@ -249,83 +237,105 @@ app.get('/groups', async (req, res) => {
   res.json(r.rows);
 });
 
-app.post('/groups', async (req, res) => {
+app.post('/groups', requireRole('comitato'), async (req, res) => {
+  const { phase_id, name } = req.body;
+
   const r = await pool.query(
     'INSERT INTO groups (phase_id,name) VALUES ($1,$2) RETURNING *',
-    [req.body.phase_id, req.body.name]
+    [phase_id, name]
   );
+
   res.status(201).json(r.rows[0]);
 });
 
 /* =========================
-   MATCHES
+   MATCHES + EXCEL IMPORT
 ========================= */
-app.get('/matches', async (_, res) => {
-  const r = await pool.query('SELECT * FROM matches ORDER BY match_date');
+app.get('/matches', async (req, res) => {
+  const r = await pool.query(
+    'SELECT * FROM matches ORDER BY match_date'
+  );
   res.json(r.rows);
 });
 
-app.post('/matches/import/:groupId', upload.single('file'), async (req, res) => {
-  const workbook = xlsx.readFile(req.file.path);
-  const rows = xlsx.utils.sheet_to_json(
-    workbook.Sheets[workbook.SheetNames[0]]
-  );
-
-  let count = 0;
-
-  for (const r of rows) {
-    await pool.query(
-      `
-      INSERT INTO matches
-      (group_id, numero_gara, team_a, team_b,
-       match_date, match_time, location,
-       score_a, score_b, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-      `,
-      [
-        req.params.groupId,
-        r.numero_gara,
-        r.team_a,
-        r.team_b,
-        r.match_date,
-        r.match_time,
-        r.location,
-        r.score_a || null,
-        r.score_b || null,
-        r.status || 'da_giocare'
-      ]
+app.post(
+  '/matches/import/:groupId',
+  requireRole('comitato'),
+  upload.single('file'),
+  async (req, res) => {
+    const workbook = xlsx.readFile(req.file.path);
+    const rows = xlsx.utils.sheet_to_json(
+      workbook.Sheets[workbook.SheetNames[0]]
     );
-    count++;
-  }
 
-  res.json({ message: 'Import completato', imported: count });
-});
+    let count = 0;
+
+    for (const r of rows) {
+      await pool.query(
+        `
+        INSERT INTO matches
+        (group_id, numero_gara, team_a, team_b,
+         match_date, match_time, location,
+         score_a, score_b, status)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `,
+        [
+          req.params.groupId,
+          r.numero_gara,
+          r.team_a,
+          r.team_b,
+          r.match_date,
+          r.match_time,
+          r.location,
+          r.score_a || null,
+          r.score_b || null,
+          r.status || 'da_giocare'
+        ]
+      );
+      count++;
+    }
+
+    res.json({
+      message: 'Import completato',
+      imported: count
+    });
+  }
+);
 
 /* =========================
    REPORTS
 ========================= */
 app.post('/reports', async (req, res) => {
+  const { match_id, referee_name, notes } = req.body;
+
   const r = await pool.query(
     `
     INSERT INTO reports (match_id, referee_name, notes)
     VALUES ($1,$2,$3)
     RETURNING *
     `,
-    [req.body.match_id, req.body.referee_name, req.body.notes || null]
+    [match_id, referee_name, notes || null]
   );
+
   res.status(201).json(r.rows[0]);
 });
 
-app.post('/reports/:id/upload', upload.single('pdf'), async (req, res) => {
-  await pool.query(
-    'UPDATE reports SET pdf_path=$1 WHERE id=$2',
-    [req.file.path, req.params.id]
-  );
-  res.json({ message: 'PDF caricato', path: req.file.path });
-});
+app.post(
+  '/reports/:id/upload',
+  upload.single('pdf'),
+  async (req, res) => {
+    await pool.query(
+      'UPDATE reports SET pdf_path=$1 WHERE id=$2',
+      [req.file.path, req.params.id]
+    );
+
+    res.json({ message: 'PDF caricato', path: req.file.path });
+  }
+);
 
 app.get('/reports', async (req, res) => {
   const r = await pool.query('SELECT * FROM reports');
+
   res.json(
     r.rows.map(row => ({
       ...row,
@@ -343,3 +353,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('Server avviato sulla porta', PORT);
 });
+

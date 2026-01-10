@@ -9,7 +9,7 @@ app.post(
     }
 
     try {
-      // 🔎 controllo email esistente
+      // 1️⃣ controllo email duplicata
       const check = await pool.query(
         'SELECT id FROM users WHERE email=$1',
         [email]
@@ -21,20 +21,34 @@ app.post(
         });
       }
 
+      // 2️⃣ crea COMMITTEE
+      const committeeResult = await pool.query(
+        `
+        INSERT INTO committees (name, province)
+        VALUES ($1, $2)
+        RETURNING id, name, province
+        `,
+        [province, province]
+      );
+
+      const committee = committeeResult.rows[0];
+
+      // 3️⃣ crea UTENTE collegato al committee
       const hash = await bcrypt.hash(password.trim(), 10);
 
-      const r = await pool.query(
+      const userResult = await pool.query(
         `
-        INSERT INTO users (email,password_hash,role,province)
-        VALUES ($1,$2,'comitato',$3)
-        RETURNING id,email,role,province
+        INSERT INTO users (email, password_hash, role, province, committee_id)
+        VALUES ($1, $2, 'comitato', $3, $4)
+        RETURNING id, email, role, committee_id
         `,
-        [email, hash, province]
+        [email, hash, province, committee.id]
       );
 
       res.status(201).json({
         message: 'Comitato creato correttamente',
-        comitato: r.rows[0]
+        committee,
+        user: userResult.rows[0]
       });
 
     } catch (err) {
@@ -43,4 +57,3 @@ app.post(
     }
   }
 );
-

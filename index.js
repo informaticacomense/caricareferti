@@ -21,7 +21,9 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// frontend statico
+/* =========================
+   STATIC
+========================= */
 app.use('/frontend', express.static(path.join(__dirname, 'frontend')));
 app.use('/uploads', express.static('uploads'));
 
@@ -41,9 +43,8 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
 const storage = multer.diskStorage({
   destination: uploadDir,
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + '-' + file.originalname)
 });
 
 const upload = multer({ storage });
@@ -54,7 +55,7 @@ const upload = multer({ storage });
 function requireRole(role) {
   return (req, res, next) => {
     if (req.headers.role !== role) {
-      return res.status(403).json({ message: `Solo ${role}` });
+      return res.status(403).json({ message: 'Permesso negato' });
     }
     next();
   };
@@ -67,7 +68,7 @@ app.get('/', (req, res) => res.send('Backend attivo'));
 
 app.get('/health', async (req, res) => {
   const r = await pool.query('SELECT now()');
-  res.json({ status: 'ok', db_time: r.rows[0].now });
+  res.json({ ok: true, time: r.rows[0].now });
 });
 
 /* =========================
@@ -81,7 +82,7 @@ app.post('/login', async (req, res) => {
   }
 
   const r = await pool.query(
-    'SELECT id, email, password_hash, role FROM users WHERE email=$1',
+    'SELECT id,email,password_hash,role,province FROM users WHERE email=$1',
     [email]
   );
 
@@ -99,7 +100,8 @@ app.post('/login', async (req, res) => {
   res.json({
     id: user.id,
     email: user.email,
-    role: user.role
+    role: user.role,
+    province: user.province
   });
 });
 
@@ -109,8 +111,8 @@ app.post('/login', async (req, res) => {
 app.post('/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;
 
-  if (!email || !newPassword || !newPassword.trim()) {
-    return res.status(400).json({ message: 'Password non valida' });
+  if (!email || !newPassword) {
+    return res.status(400).json({ message: 'Dati mancanti' });
   }
 
   const hash = await bcrypt.hash(newPassword.trim(), 10);
@@ -140,7 +142,7 @@ app.post(
 
     const r = await pool.query(
       `
-      INSERT INTO users (email, password_hash, role, province)
+      INSERT INTO users (email,password_hash,role,province)
       VALUES ($1,$2,'comitato',$3)
       RETURNING id,email,role,province
       `,
@@ -148,25 +150,30 @@ app.post(
     );
 
     res.status(201).json({
-      message: 'Comitato creato',
+      message: 'Comitato creato correttamente',
       comitato: r.rows[0]
     });
   }
 );
 
 /* =========================
-   SEASONS (STAGIONI)
+   SEASONS
 ========================= */
-app.post('/seasons', requireRole('comitato'), async (req, res) => {
-  const { name } = req.body;
+app.get('/seasons', async (req, res) => {
+  const r = await pool.query(
+    'SELECT * FROM seasons ORDER BY id DESC'
+  );
+  res.json(r.rows);
+});
 
-  if (!name || !name.trim()) {
+app.post('/seasons', requireRole('comitato'), async (req, res) => {
+  if (!req.body.name) {
     return res.status(400).json({ message: 'Nome stagione obbligatorio' });
   }
 
   const r = await pool.query(
     'INSERT INTO seasons (name) VALUES ($1) RETURNING *',
-    [name.trim()]
+    [req.body.name.trim()]
   );
 
   res.status(201).json({
@@ -175,15 +182,8 @@ app.post('/seasons', requireRole('comitato'), async (req, res) => {
   });
 });
 
-app.get('/seasons', async (req, res) => {
-  const r = await pool.query(
-    'SELECT id, name FROM seasons ORDER BY id DESC'
-  );
-  res.json(r.rows);
-});
-
 /* =========================
-   CATEGORIE
+   CATEGORIES
 ========================= */
 app.get('/categories', async (req, res) => {
   const r = await pool.query(
@@ -196,6 +196,10 @@ app.get('/categories', async (req, res) => {
 app.post('/categories', requireRole('comitato'), async (req, res) => {
   const { season_id, name } = req.body;
 
+  if (!season_id || !name) {
+    return res.status(400).json({ message: 'Dati mancanti' });
+  }
+
   const r = await pool.query(
     'INSERT INTO categories (season_id,name) VALUES ($1,$2) RETURNING *',
     [season_id, name]
@@ -205,7 +209,7 @@ app.post('/categories', requireRole('comitato'), async (req, res) => {
 });
 
 /* =========================
-   FASI
+   PHASES
 ========================= */
 app.get('/phases', async (req, res) => {
   const r = await pool.query(
@@ -218,6 +222,10 @@ app.get('/phases', async (req, res) => {
 app.post('/phases', requireRole('comitato'), async (req, res) => {
   const { category_id, name } = req.body;
 
+  if (!category_id || !name) {
+    return res.status(400).json({ message: 'Dati mancanti' });
+  }
+
   const r = await pool.query(
     'INSERT INTO phases (category_id,name) VALUES ($1,$2) RETURNING *',
     [category_id, name]
@@ -227,7 +235,7 @@ app.post('/phases', requireRole('comitato'), async (req, res) => {
 });
 
 /* =========================
-   GIRONI
+   GROUPS
 ========================= */
 app.get('/groups', async (req, res) => {
   const r = await pool.query(
@@ -240,6 +248,10 @@ app.get('/groups', async (req, res) => {
 app.post('/groups', requireRole('comitato'), async (req, res) => {
   const { phase_id, name } = req.body;
 
+  if (!phase_id || !name) {
+    return res.status(400).json({ message: 'Dati mancanti' });
+  }
+
   const r = await pool.query(
     'INSERT INTO groups (phase_id,name) VALUES ($1,$2) RETURNING *',
     [phase_id, name]
@@ -249,12 +261,10 @@ app.post('/groups', requireRole('comitato'), async (req, res) => {
 });
 
 /* =========================
-   MATCHES + EXCEL IMPORT
+   MATCHES
 ========================= */
 app.get('/matches', async (req, res) => {
-  const r = await pool.query(
-    'SELECT * FROM matches ORDER BY match_date'
-  );
+  const r = await pool.query('SELECT * FROM matches ORDER BY match_date');
   res.json(r.rows);
 });
 
@@ -274,9 +284,7 @@ app.post(
       await pool.query(
         `
         INSERT INTO matches
-        (group_id, numero_gara, team_a, team_b,
-         match_date, match_time, location,
-         score_a, score_b, status)
+        (group_id,numero_gara,team_a,team_b,match_date,match_time,location,score_a,score_b,status)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         `,
         [
@@ -295,10 +303,7 @@ app.post(
       count++;
     }
 
-    res.json({
-      message: 'Import completato',
-      imported: count
-    });
+    res.json({ message: 'Import completato', imported: count });
   }
 );
 
@@ -308,9 +313,13 @@ app.post(
 app.post('/reports', async (req, res) => {
   const { match_id, referee_name, notes } = req.body;
 
+  if (!match_id || !referee_name) {
+    return res.status(400).json({ message: 'Dati mancanti' });
+  }
+
   const r = await pool.query(
     `
-    INSERT INTO reports (match_id, referee_name, notes)
+    INSERT INTO reports (match_id,referee_name,notes)
     VALUES ($1,$2,$3)
     RETURNING *
     `,
@@ -335,7 +344,6 @@ app.post(
 
 app.get('/reports', async (req, res) => {
   const r = await pool.query('SELECT * FROM reports');
-
   res.json(
     r.rows.map(row => ({
       ...row,
@@ -350,7 +358,6 @@ app.get('/reports', async (req, res) => {
    SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('Server avviato sulla porta', PORT);
-});
-
+app.listen(PORT, () =>
+  console.log('Server avviato sulla porta', PORT)
+);

@@ -8,52 +8,59 @@ app.post(
       return res.status(400).json({ message: 'Campi mancanti' });
     }
 
+    const client = await pool.connect();
+
     try {
-      // 1️⃣ controllo email duplicata
-      const check = await pool.query(
+      await client.query('BEGIN');
+
+      // 1️⃣ controllo email duplicata su USERS
+      const checkUser = await client.query(
         'SELECT id FROM users WHERE email=$1',
         [email]
       );
 
-      if (check.rows.length > 0) {
+      if (checkUser.rows.length > 0) {
+        await client.query('ROLLBACK');
         return res.status(409).json({
           message: 'Esiste già un comitato con questa email'
         });
       }
 
-      // 2️⃣ crea COMMITTEE
-      const committeeResult = await pool.query(
+      // 2️⃣ crea COMMITTEE (⚠️ CON EMAIL)
+      const committeeResult = await client.query(
         `
-        INSERT INTO committees (name, province)
-        VALUES ($1, $2)
-        RETURNING id, name, province
+        INSERT INTO committees (name, email, province)
+        VALUES ($1, $2, $3)
+        RETURNING id
         `,
-        [province, province]
+        [province, email, province]
       );
 
-      const committee = committeeResult.rows[0];
+      const committeeId = committeeResult.rows[0].id;
 
       // 3️⃣ crea UTENTE collegato al committee
       const hash = await bcrypt.hash(password.trim(), 10);
 
-      const userResult = await pool.query(
+      await client.query(
         `
         INSERT INTO users (email, password_hash, role, province, committee_id)
         VALUES ($1, $2, 'comitato', $3, $4)
-        RETURNING id, email, role, committee_id
         `,
-        [email, hash, province, committee.id]
+        [email, hash, province, committeeId]
       );
 
+      await client.query('COMMIT');
+
       res.status(201).json({
-        message: 'Comitato creato correttamente',
-        committee,
-        user: userResult.rows[0]
+        message: 'Comitato creato correttamente'
       });
 
     } catch (err) {
+      await client.query('ROLLBACK');
       console.error('ERRORE CREA COMITATO:', err);
-      res.status(500).json({ message: 'Errore server' });
+      res.status(500).json({ message: 'Errore creazione comitato' });
+    } finally {
+      client.release();
     }
   }
 );
